@@ -3,6 +3,20 @@ from sortedcontainers import SortedList
 
 
 class IndexedList(MutableSequence):
+    """
+    IndexedList is a mixture of list and dictionary.
+    Every element in IndexedList has a key and one can access perform search by key.
+
+    The key is calculated in the following way:
+
+    - ``str``: key is ``str`` (it is a special case)
+    - ``list``: key is first element of the list or ``None`` if there the list is empty
+    - ``dictionary``: if it has only one record, its key is a key, otherwise ``Sequence.Mapping`` is a key
+    - any other object: we'll look for .__qqkey__() method, and fallback to ``str`` if fail
+
+    The main purpose of this class is to provide effective BeautifulSoup-style navigation over the s-expression-like
+    data structures
+    """
 
     def __init__(self, *iterable):
         if len(iterable) == 1 and isinstance(iterable[0], Sequence):
@@ -108,5 +122,5 @@ class IndexedList(MutableSequence):
                 ret = str
         return ret
 
-    
+
 

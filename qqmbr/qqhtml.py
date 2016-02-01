@@ -87,7 +87,7 @@ class QqHTMLFormatter(object):
     def format(self, tag: QqTag, markdown = False):
         out = []
 
-        for child in tag.children:
+        for child in tag:
             if isinstance(child, str):
                 if markdown:
 
@@ -166,7 +166,7 @@ class QqHTMLFormatter(object):
         return doc.getvalue()
 
     def preprocess(self):
-        for tag in self.root.children:
+        for tag in self.root:
             if isinstance(tag, QqTag) and tag.name in self.counters:
                 counter = self.counters[tag.name]
                 counter.increase()

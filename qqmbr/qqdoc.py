@@ -6,6 +6,19 @@ class QqError(Exception):
     pass
 
 class QqTag(object):
+    """
+    QqTag is essentially an IndexedList with name attached.
+
+    It provides BeautifulSoup-style navigation over its child:
+    - ``tag.find('subtag')`` returns first occurrence of a child with name ``subtag``. (Note that
+    in contrast with BeatifulSoup, this is not recursive: it searches only through tag's childrens.)
+    - ``tag._subtag`` is a shortcut for ``tag.find('subtag')`` (works if ``subtag`` is valid identifier)
+    - ``tag.find_all('subtag')`` returns all occurrences of tag with name 'subtag'
+    - ``tag('subtag')`` is shortcut for ``tag.find_all('subtag')``
+
+    If QqTag has only one child, it is called *simple*. Then its `.value` is defined. (Useful for access to property-like
+    subtags.)
+    """
     def __init__(self, name, children = None, parent = None):
         if isinstance(name, dict) and len(name) == 1:
             self.__init__(*list(name.items())[0], parent=parent)
@@ -15,23 +28,23 @@ class QqTag(object):
         self.parent = parent
 
         if children is None:
-            self.children = IndexedList()
+            self._children = IndexedList()
         elif isinstance(children, str) or isinstance(children, int) or isinstance(children, float):
-            self.children = IndexedList([children])
+            self._children = IndexedList([children])
         elif isinstance(children, Sequence):
-            self.children = IndexedList(children)
+            self._children = IndexedList(children)
         else:
             raise QqError("I don't know what to do with children " + str(children))
 
     def __repr__(self):
         if self.parent is None:
-            return "QqTag(%s, %s)" % (repr(self.name), repr(self.children))
+            return "QqTag(%s, %s)" % (repr(self.name), repr(self._children))
         else:
-            return "QqTag(%s, %s, parent = %s)" % (repr(self.name), repr(self.children), repr(self.parent.name))
+            return "QqTag(%s, %s, parent = %s)" % (repr(self.name), repr(self._children), repr(self.parent.name))
 
 
     def __str__(self):
-        return "{%s : %s}" % (self.name, self.children)
+        return "{%s : %s}" % (self.name, self._children)
 
     def __eq__(self, other):
         if other is None:
@@ -44,18 +57,18 @@ class QqTag(object):
         Simple tags are those containing only one child
         :return:
         """
-        return len(self.children) == 1
+        return len(self) == 1
 
     @property
     def value(self):
         if self.is_simple:
-            return self.children[0]
+            return self[0]
         raise QqError("More than one child, value is not defined, QqTag: %s" % str(self))
 
     @value.setter
     def value(self, value):
         if self.is_simple:
-            self.children[0] = value
+            self[0] = value
         else:
             raise QqError("More than one child, cannot set value")
 
@@ -69,19 +82,19 @@ class QqTag(object):
         raise AttributeError()
 
     def find(self, key):
-        if key in self.children._locator:
-            return self.children.find(key)
+        if key in self._children._locator:
+            return self._children.find(key)
 
     def find_all(self, key):
-        if key in self.children._locator:
-            return self.children.find_all(key)
+        if key in self._children._locator:
+            return self._children.find_all(key)
 
     def __call__(self, key):
         return self.find_all(key)
 
     def as_list(self):
         ret = [self.name]
-        for child in self.children:
+        for child in self:
             if isinstance(child, QqTag):
                 ret.append(child.as_list())
             else:
@@ -89,20 +102,30 @@ class QqTag(object):
         return ret
 
     def append_child(self, child):
-        self.children.append(child)
+        self._children.append(child)
         child.parent = self
 
     def append_line(self, line):
         if line:
-            self.children.append(line)
+            self._children.append(line)
 
     def __getitem__(self, item):
-        return self.children[item]
+        return self._children[item]
+
+    def __setitem__(self, key, value):
+        self._children[key] = value
+
+    def __iter__(self):
+        return iter(self._children)
+
+    def __len__(self):
+        return len(self._children)
+
 
     @property
     def text_content(self):
         chunk = []
-        for child in self.children:
+        for child in self:
             if isinstance(child, str):
                 chunk.append(child)
         return "".join(chunk)
