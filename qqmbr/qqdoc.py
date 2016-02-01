@@ -1,4 +1,4 @@
-from collections import Sequence, namedtuple
+from collections import Sequence
 from qqmbr.indexedlist import IndexedList
 import re
 
@@ -27,7 +27,7 @@ class QqTag(object):
         if self.parent is None:
             return "QqTag(%s, %s)" % (repr(self.name), repr(self.children))
         else:
-            return "QqTag(%s, %s, parent = %s)" % (repr(self.name), repr(self.children), repr(self.parent))
+            return "QqTag(%s, %s, parent = %s)" % (repr(self.name), repr(self.children), repr(self.parent.name))
 
 
     def __str__(self):
@@ -50,7 +50,7 @@ class QqTag(object):
     def value(self):
         if self.is_simple:
             return self.children[0]
-        raise QqError("More than one child, value is not defined")
+        raise QqError("More than one child, value is not defined, QqTag: %s" % str(self))
 
     @value.setter
     def value(self, value):
@@ -99,6 +99,15 @@ class QqTag(object):
     def __getitem__(self, item):
         return self.children[item]
 
+    @property
+    def text_content(self):
+        chunk = []
+        for child in self.children:
+            if isinstance(child, str):
+                chunk.append(child)
+        return "".join(chunk)
+
+
 class StackElement(object):
     def __init__(self, tag, indent=0, bracket=None, bracket_counter=0):
         self.tag = tag
@@ -134,14 +143,17 @@ class QqParser(object):
         self._last_tag = self._stack.pop()
         return self._last_tag
 
-    def get_indent(self, s):
+    def str_stack(self):
+        return ", ".join(str(s) for s in self._stack)
+
+    @staticmethod
+    def get_indent(s):
         m = re.match(r'\s*', s)
         beginning = m.group(0)
         if '\t' in beginning:
             raise QqError("No tabs allowed in QqDoc at the beginning of line!")
         m = re.match(r' *', s)
         return len(m.group(0))
-
 
 
     def parse(self, lines):
@@ -163,15 +175,17 @@ class QqParser(object):
         stack = [StackElement(tree, self.get_indent(lines[0])-1)]
         self._stack = stack
         self._last_tag = stack[0]
+        current_tag = stack[0].tag
         inline_mode = False
 
         current_indent = 0
 
+        chunk = []
+
         for i, line in enumerate(lines):
 
-
             if not line or line[-1] != '\n':
-                line = line + "\n"
+                line += "\n"
 
             indent_decreased = False
             indent = self.get_indent(line)
@@ -186,6 +200,10 @@ class QqParser(object):
 
 
             if not inline_mode:
+                if indent <= stack[-1].indent:
+                    current_tag.append_line("".join(chunk))
+                    chunk = []
+
                 while indent <= stack[-1].indent:
                     self.pop_stack()
 
@@ -194,12 +212,12 @@ class QqParser(object):
                 (expected indent %i on tag %s, get indent %i, stack: %s)" % (i + 1,
                                                                              lin,
                                                                              self._last_tag.indent,
-                                                                             self._last_tag.tag.name, indent, str(stack)))
+                                                                             self._last_tag.tag.name, indent, self.str_stack()))
 
             current_tag = stack[-1].tag
 
             if lin and lin[0] == self.command_symbol:
-                m = re.match(self.command_regex + self.tag_regex, lin)
+                m = re.match(self.command_regex + self.tag_regex + r"(?![\[\{])", lin)
                 if m:
                     tag = m.group(1)
                     if tag in self.allowed_tags:
@@ -207,7 +225,12 @@ class QqParser(object):
                             raise QqError("New block tag open during inline mode on line %i: %s", (i + 1, lin))
 
                         new_tag = QqTag(tag, [])
+
+                        current_tag.append_line("".join(chunk))
+                        chunk = []
+
                         current_tag.append_child(new_tag)
+
                         stack.append(StackElement(new_tag, indent))
 
                         if i < len(lines)-1 and self.get_indent(lines[i+1]) > indent:
@@ -231,12 +254,15 @@ class QqParser(object):
                 if inline_mode:
                     if m.group(0) == stack[-1].bracket:
                         stack[-1].bracket_counter += 1
-                    elif m.group(0) == {'{':'}', '[':']'}[stack[-1].bracket]:
+                    elif m.group(0) == {'{': '}', '[': ']'}[stack[-1].bracket]:
                         stack[-1].bracket_counter -= 1
                         if stack[-1].bracket_counter == 0:
                             # close current inline tag
 
-                            current_tag.append_line(line[cursor: m.start()])
+                            chunk.append(line[cursor: m.start()])
+                            current_tag.append_line("".join(chunk))
+                            chunk = []
+
                             cursor = m.end()
 
                             self.pop_stack()
@@ -248,9 +274,12 @@ class QqParser(object):
                 if inline_tag is not None:
                     if inline_tag in self.allowed_inline_tags:
                         inline_mode = True
-                        current_tag.append_line(line[cursor: m.start()])
+                        chunk.append(line[cursor: m.start()])
+                        current_tag.append_line("".join(chunk))
+                        chunk = []
 
                         new_tag = QqTag(inline_tag, [])
+
                         current_tag.append_child(new_tag)
                         stack.append(StackElement(new_tag, indent=None,
                                                   bracket=m.group('bracket'),
@@ -264,6 +293,8 @@ class QqParser(object):
 
 
             # Append the rest of line to current tag
-            current_tag.append_line(line[cursor:])
+            chunk.append(line[cursor:])
+
+        current_tag.append_line("".join(chunk))
 
         return tree

@@ -1,6 +1,5 @@
 import unittest
 from qqmbr.indexedlist import IndexedList
-from sortedcontainers import SortedList
 from qqmbr.qqdoc import QqTag, QqParser
 
 class TestQqTagMethods(unittest.TestCase):
@@ -71,11 +70,9 @@ Blank line before the end
         tree = parser.parse(doc)
         self.assertEqual(tree[0], "Hello\n")
         self.assertEqual(tree._tag[0], "World\n")
-        self.assertEqual(tree._tag._othertag.children, ["This\n", "Is\n"])
+        self.assertEqual(tree._tag._othertag.children, ["This\nIs\n"])
         self.assertEqual(tree._tag[2], 'A test\n')
-        self.assertEqual(tree[2], 'The end\n')
-        self.assertEqual(tree[3], '\n')
-        self.assertEqual(tree[4], 'Blank line before the end\n')
+        self.assertEqual(tree[2], 'The end\n\nBlank line before the end\n')
         self.assertEqual(tree._tag.parent, tree)
         self.assertEqual(tree._tag._othertag.parent, tree._tag)
 
@@ -88,7 +85,7 @@ Blank line before the end
 End"""
         parser = QqParser(allowed_tags={'tag'})
         tree = parser.parse(doc)
-        self.assertEqual(tree._tag.children, ['First\n', '    Second\n', 'Third\n'])
+        self.assertEqual(tree._tag.children, ['First\n    Second\nThird\n'])
 
     def test_inline_tag1(self):
         doc = r"""Hello, \tag{inline} tag!
@@ -119,10 +116,7 @@ the next one\othertag{okay}}
             '_root', 'Hello, ',
             [
                 'tag',
-                '\n',
-                'this is a continuation of inline tag on the next line\n',
-                '\n',
-                'the next one',
+                '\nthis is a continuation of inline tag on the next line\n\nthe next one',
                 [
                     'othertag',
                     'okay'
@@ -171,12 +165,10 @@ the next one\othertag{okay}}
                     '{\n',
                     [
                         'tag',
-                        '{\n',
-                        'this ',
+                        '{\nthis ',
                         [
                             'tag',
-                            'is a {a test}\n',
-                            'okay',
+                            'is a {a test}\nokay',
                         ],
                         '\n'
                      ],
