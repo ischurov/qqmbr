@@ -36,5 +36,3 @@ class TestQqTagMethods(unittest.TestCase):
         self.assertEqual(q._c.value, 'world')
         self.assertEqual(q('b'), [QqTag('b', 'hello'), QqTag('b', 'this')])
         self.assertEqual(q.find('--+-')._b.value, 'way')
-
-

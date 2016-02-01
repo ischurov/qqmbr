@@ -32,6 +32,7 @@ class QqTag(object):
     def __eq__(self, other):
         return self.__dict__ == other.__dict__
 
+    @property
     def is_simple(self):
         """
         Simple tags are those containing only one child
@@ -41,13 +42,13 @@ class QqTag(object):
 
     @property
     def value(self):
-        if self.is_simple():
+        if self.is_simple:
             return self.children[0]
         raise QqError("More than one child, value is not defined")
 
     @value.setter
     def value(self, value):
-        if self.is_simple():
+        if self.is_simple:
             self.children[0] = value
         else:
             raise QqError("More than one child, cannot set value")
@@ -102,20 +103,34 @@ class QqParser(object):
             line with indent 4 (belong to tag)
         line with indent 0 (belong to root)
         """
+        if isinstance(lines, str):
+            lines = lines.splitlines()
+
         tree = QqTag('_root')
         StackElement = namedtuple('StackElement', ['tag', 'indent'])
         stack = [StackElement(tree, self.get_indent(lines[0])-1)]
-        last_tag = stack[-1]
 
-        for i, line in enumerate(lines, 1):
+        current_indent = 0
+
+        for i, line in enumerate(lines):
+
+            indent_decreased = False
             indent = self.get_indent(line)
             lin = line.strip()
+
+            if indent < current_indent:
+                indent_decreased = True
+                current_indent = indent
 
             while indent <= stack[-1].indent:
                 last_tag = stack.pop()
 
-#            if indent > 0 and indent != last_tag.indent:
-#                raise QqError("Formatting error: indent doesn't match on line %i: %s" % (i, lin))
+            if indent_decreased and indent != last_tag.indent:
+                raise QqError("Formatting error: unexpected indent on line %i: %s \n\
+                (expected indent %i on tag %s, get indent %i, stack: %s)" % (i + 1,
+                                                                             lin,
+                                                                             last_tag.indent,
+                                                                             last_tag.tag.name, indent, str(stack)))
 
             current_tag = stack[-1].tag
 
@@ -128,21 +143,14 @@ class QqParser(object):
                         current_tag.children.append(new_tag)
                         stack.append(StackElement(new_tag, indent))
 
+                        if i < len(lines)-1 and self.get_indent(lines[i+1]) > indent:
+                            current_indent = self.get_indent(lines[i+1])
+
                         continue
                         # TODO: extended syntax
 
             # Ordinary line, not a tag
             # Append it to current tag
-            current_tag.children.append(line)
+            current_tag.children.append(line[current_indent:])
 
         return tree
-
-
-
-
-
-
-
-
-
-
