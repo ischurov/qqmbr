@@ -183,32 +183,35 @@ class QqParser(object):
         """
         :param lines:
         :return:
-
-        == Example ==
-
-        line with indent 0 (belong to root)
-        \tag with indent 0 (belong to root)
-            line with indent 4 (belong to tag)
-        line with indent 0 (belong to root)
         """
         if isinstance(lines, str):
-            lines = lines.splitlines()
+            lines = lines.splitlines(keepends=True)
+
+        lines.reverse()
+        numbers = list(range(len(lines), 0, -1))
+        # We probably will append some elements to lines and have to maintain their numbers for error messages
 
         tree = QqTag('_root')
-        stack = [StackElement(tree, self.get_indent(lines[0])-1)]
+        stack = [StackElement(tree, self.get_indent(lines[-1])-1)]
         self._stack = stack
         self._last_tag = stack[0]
         current_tag = stack[0].tag
         inline_mode = False
 
-        current_indent = 0
+        current_indent = self.get_indent(lines[-1])
 
         chunk = []
 
-        for i, line in enumerate(lines):
 
-            if not line or line[-1] != '\n':
-                line += "\n"
+        while lines:
+            line = lines.pop()
+            i = numbers.pop()
+
+        #    if not line or line[-1] != '\n':
+        #        line += "\n"
+
+            if line.strip() == "":
+                line = " "*current_indent+"\n"
 
             indent_decreased = False
             indent = self.get_indent(line)
@@ -219,8 +222,7 @@ class QqParser(object):
                 current_indent = indent
 
             if indent_decreased and inline_mode:
-                raise QqError("Indent decreased during inline mode on line %i: %s", (i + 1, lin))
-
+                raise QqError("Indent decreased during inline mode on line %i: %s", (i, lin))
 
             if not inline_mode:
                 if indent <= stack[-1].indent:
@@ -232,12 +234,14 @@ class QqParser(object):
 
             if indent_decreased and indent != self._last_tag.indent:
                 raise QqError("Formatting error: unexpected indent on line %i: %s \n\
-                (expected indent %i on tag %s, get indent %i, stack: %s)" % (i + 1,
+                (expected indent %i on tag %s, get indent %i, stack: %s)" % (i,
                                                                              lin,
                                                                              self._last_tag.indent,
                                                                              self._last_tag.tag.name, indent, self.str_stack()))
 
             current_tag = stack[-1].tag
+
+            # Process block tags
 
             if lin and lin[0] == self.command_symbol:
                 m = re.match(self.command_regex + self.tag_regex + r"(?![\[\{])", lin)
@@ -245,7 +249,7 @@ class QqParser(object):
                     tag = m.group(1)
                     if tag in self.allowed_tags:
                         if inline_mode:
-                            raise QqError("New block tag open during inline mode on line %i: %s", (i + 1, lin))
+                            raise QqError("New block tag open during inline mode on line %i: %s", (i, lin))
 
                         new_tag = QqTag(tag, [])
 
@@ -256,13 +260,26 @@ class QqParser(object):
 
                         stack.append(StackElement(new_tag, indent))
 
-                        if i < len(lines)-1 and self.get_indent(lines[i+1]) > indent:
-                            current_indent = self.get_indent(lines[i+1])
+
+                        if len(lines)>0 and self.get_indent(lines[-1]) > indent:
+                            current_indent = self.get_indent(lines[-1])
+                            tag_indent = current_indent
+                        else:
+                            tag_indent = self.get_indent(line) + 4
+                        # virtual tag indent
+
+                        rest = lin[m.end():]
+                        restlines = [" "*tag_indent + l.lstrip() for l in rest.split('|') if l.strip() != ""]
+                        if restlines:
+                            current_indent = tag_indent
+                        for restline in reversed(restlines):
+                            lines.append(restline)
+                            numbers.append(i)
 
                         continue
-                        # TODO: extended syntax
 
 
+            # Process inline tags
 
             inlines = re.finditer(self.command_regex +
                                   r'(?P<tag>' + self.tag_regex + ')' +
@@ -281,6 +298,8 @@ class QqParser(object):
                         stack[-1].bracket_counter -= 1
                         if stack[-1].bracket_counter == 0:
                             # close current inline tag
+
+                            # TODO: Special handlers for [] tags (e.g. short references syntax etc.)
 
                             chunk.append(line[cursor: m.start()])
                             current_tag.append_line("".join(chunk))
@@ -313,6 +332,8 @@ class QqParser(object):
                     else:
                         if inline_mode and m.group(0) == stack[-1].bracket:
                             stack[-1].bracket_counter += 1
+
+
 
 
             # Append the rest of line to current tag

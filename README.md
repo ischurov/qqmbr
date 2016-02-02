@@ -24,20 +24,20 @@
     
     Here is formula with the label:
     
-    \equation | label: eq:Fermat
+    \equation \label eq:Fermat
         x^n + y^n = z^n, \quad n>2
         
     Several formulas with labels:
     
     \gather
-        \item | label: eq:2x2
+        \item \label eq:2x2
             2\times 2 = 4
-        \item | label: eq:3x3
+        \item \label eq:3x3
             3\times 3 = 9
     
     We can reference formula \eqref{eq:Fermat} and \eqref{eq:2x2} just like we referenced header before.
     
-    \h3 Another level-3 header | label: sec:another
+    \h3 Another level-3 header | \label sec:another
     
     Here is the header we referenced.
     
@@ -49,14 +49,14 @@
         \width 500px
     
     \question
-        Do you like it?
+        Do you like qqmbr?
         \quiz
-            \choice | correct: false
+            \choice \correct false
                 No.
                 \comment You didn't even try!
-            \choice | correct: true
+            \choice \correct true
                 Yes, i like it very much!
-                \comment And do I!
+                \comment And so do I!
 
 
 ### Highlights

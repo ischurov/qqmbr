@@ -3,8 +3,8 @@ from qqmbr.qqdoc import QqTag, QqParser
 from qqmbr.qqhtml import QqHTMLFormatter
 
 
-class TestQqTagMethods(unittest.TestCase):
-    def test_create_qqtag(self):
+class TestQqHtmlMethods(unittest.TestCase):
+    def test_parse_html1(self):
         parser = QqParser(allowed_tags={'h1', 'h2', 'h3', 'h4', 'eq', 'eqref', 'ref', 'equation', 'label', 'idx'})
         doc = r"""\h1
     Hello
