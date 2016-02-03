@@ -1,25 +1,30 @@
+# (c) Ilya V. Schurov, 2016
+# Available under MIT license (see LICENSE file in the root folder)
+
 from collections import Sequence
 from qqmbr.indexedlist import IndexedList
 import re
 
+
 class QqError(Exception):
     pass
 
+
 class QqTag(object):
     """
-    QqTag is essentially an IndexedList with name attached.
+    QqTag is essentially an IndexedList with name attached. It behaves mostly like eTree Element.
 
-    It provides BeautifulSoup-style navigation over its child:
+    It provides eTree and BeautifulSoup-style navigation over its child:
     - ``tag.find('subtag')`` returns first occurrence of a child with name ``subtag``. (Note that
     in contrast with BeatifulSoup, this is not recursive: it searches only through tag's childrens.)
     - ``tag._subtag`` is a shortcut for ``tag.find('subtag')`` (works if ``subtag`` is valid identifier)
     - ``tag.find_all('subtag')`` returns all occurrences of tag with name 'subtag'
     - ``tag('subtag')`` is shortcut for ``tag.find_all('subtag')``
 
-    If QqTag has only one child, it is called *simple*. Then its `.value` is defined. (Useful for access to property-like
-    subtags.)
+    If QqTag has only one child, it is called *simple*. Then its `.value` is defined. (Useful for access
+    to property-like subtags.)
     """
-    def __init__(self, name, children = None, parent = None):
+    def __init__(self, name, children=None, parent=None):
         if isinstance(name, dict) and len(name) == 1:
             self.__init__(*list(name.items())[0], parent=parent)
             return
@@ -41,7 +46,6 @@ class QqTag(object):
             return "QqTag(%s, %s)" % (repr(self.name), repr(self._children))
         else:
             return "QqTag(%s, %s, parent = %s)" % (repr(self.name), repr(self._children), repr(self.parent.name))
-
 
     def __str__(self):
         return "{%s : %s}" % (self.name, self._children)
@@ -72,7 +76,6 @@ class QqTag(object):
         else:
             raise QqError("More than one child, cannot set value")
 
-
     def __qqkey__(self):
         return self.name
 
@@ -82,6 +85,11 @@ class QqTag(object):
         raise AttributeError()
 
     def find(self, key):
+        """
+        Returns direct children with the given key if it exists, otherwise returns None
+        :param key: key
+        :return: QqTag
+        """
         if key in self._children._locator:
             return self._children.find(key)
 
@@ -121,7 +129,6 @@ class QqTag(object):
     def __len__(self):
         return len(self._children)
 
-
     @property
     def text_content(self):
         chunk = []
@@ -130,6 +137,28 @@ class QqTag(object):
                 chunk.append(child)
         return "".join(chunk)
 
+    def exists(self, key):
+        """
+        Returns True if a child with given key exists
+        :param key:
+        :return:
+        """
+        return key in self._children._locator
+
+    def get(self, key, default_value=None):
+        """
+        Returns a value of a direct child with a given key.
+        If it is does not exists or is not simple, returns default value (default: None)
+        :param key: key
+        :param default_value: what to return if there is no such key or the corresponding child is ot simple
+        :return: the value of a child
+        """
+        tag = self.find(key)
+        if tag and tag.is_simple:
+            return tag.value
+        else:
+            return default_value
+
 
 class StackElement(object):
     def __init__(self, tag, indent=0, bracket=None, bracket_counter=0):
@@ -137,21 +166,24 @@ class StackElement(object):
         self.indent = indent
         self.bracket = bracket
         self.bracket_counter = bracket_counter
+
     def __str__(self):
         return "<%s, %s, %s, %s>" % (self.tag.name, str(self.indent), self.bracket, str(self.bracket_counter))
+
     def __repr__(self):
         return "StackElement(%s, %s, %s, %s)" % (repr(self.tag),
                                                  repr(self.indent),
                                                  repr(self.bracket),
                                                  repr(self.bracket_counter))
 
+
 class QqParser(object):
-    def __init__(self, command_symbol='\\', command_regex=r'\\',
-                 allowed_tags=None, tag_regex=r"(\w+)", allowed_inline_tags=None):
+    def __init__(self, command_symbol='\\', command_regex=r'\\', sep_symbol="|",
+                 allowed_tags=None, tag_regex=r"([^\s\{\[]+)", allowed_inline_tags=None, alias2tag=None):
         self.command_symbol = command_symbol
         self.command_regex = command_regex
         if allowed_tags is None:
-            self.allowed_tags = {}
+            self.allowed_tags = set([])
         else:
             self.allowed_tags = allowed_tags
         self.tag_regex = tag_regex
@@ -161,6 +193,12 @@ class QqParser(object):
             self.allowed_inline_tags = allowed_inline_tags
         self._last_tag = None
         self._stack = None
+        if alias2tag is None:
+            self.alias2tag = {}
+        else:
+            self.alias2tag = alias2tag
+        self.escape_stub = '&_ESCAPE_Thohhe1eieMam6Yo_'
+        self.sep_symbol = sep_symbol
 
     def pop_stack(self):
         self._last_tag = self._stack.pop()
@@ -178,6 +216,31 @@ class QqParser(object):
         m = re.match(r' *', s)
         return len(m.group(0))
 
+    def escape_line(self, s):
+        """
+        Replaces '\\' and '\ ' with special stub
+        :param s: a line
+        :return: escaped line
+        """
+        s = s.replace(self.command_symbol*2, self.escape_stub + 'COMMAND_&')
+        s = s.replace(self.command_symbol+self.sep_symbol, self.escape_stub + 'SEP_&')
+        s = s.replace(self.command_symbol+" ", self.escape_stub + 'SPACE_&')
+        return s
+        # TODO: write a test for escape/unescape
+
+    def unescape_line(self, s):
+        """
+        Replaces special stub's inserted by ``escape_line()`` with '\' and ' '
+
+        Note: this is **NOT** an inverse of escape_line.
+
+        :param s: a line
+        :return: unescaped line
+        """
+        s = s.replace(self.escape_stub + 'SPACE_&', " ")
+        s = s.replace(self.escape_stub + 'SEP_&', self.sep_symbol)
+        s = s.replace(self.escape_stub + 'COMMAND_&', self.command_symbol)
+        return s
 
     def parse(self, lines):
         """
@@ -202,13 +265,9 @@ class QqParser(object):
 
         chunk = []
 
-
         while lines:
-            line = lines.pop()
+            line = self.escape_line(lines.pop())
             i = numbers.pop()
-
-        #    if not line or line[-1] != '\n':
-        #        line += "\n"
 
             if line.strip() == "":
                 line = " "*current_indent+"\n"
@@ -226,7 +285,7 @@ class QqParser(object):
 
             if not inline_mode:
                 if indent <= stack[-1].indent:
-                    current_tag.append_line("".join(chunk))
+                    current_tag.append_line(self.unescape_line("".join(chunk)))
                     chunk = []
 
                 while indent <= stack[-1].indent:
@@ -237,31 +296,32 @@ class QqParser(object):
                 (expected indent %i on tag %s, get indent %i, stack: %s)" % (i,
                                                                              lin,
                                                                              self._last_tag.indent,
-                                                                             self._last_tag.tag.name, indent, self.str_stack()))
+                                                                             self._last_tag.tag.name, indent,
+                                                                             self.str_stack()))
 
             current_tag = stack[-1].tag
 
             # Process block tags
 
             if lin and lin[0] == self.command_symbol:
-                m = re.match(self.command_regex + self.tag_regex + r"(?![\[\{])", lin)
+                m = re.match(self.command_regex + self.tag_regex + r"(?= |{}|$)".format(self.command_regex), lin)
                 if m:
                     tag = m.group(1)
+                    tag = self.alias2tag.get(tag, tag)
                     if tag in self.allowed_tags:
                         if inline_mode:
                             raise QqError("New block tag open during inline mode on line %i: %s", (i, lin))
 
                         new_tag = QqTag(tag, [])
 
-                        current_tag.append_line("".join(chunk))
+                        current_tag.append_line(self.unescape_line("".join(chunk)))
                         chunk = []
 
                         current_tag.append_child(new_tag)
 
                         stack.append(StackElement(new_tag, indent))
 
-
-                        if len(lines)>0 and self.get_indent(lines[-1]) > indent:
+                        if len(lines) > 0 and self.get_indent(lines[-1]) > indent:
                             current_indent = self.get_indent(lines[-1])
                             tag_indent = current_indent
                         else:
@@ -269,7 +329,8 @@ class QqParser(object):
                         # virtual tag indent
 
                         rest = lin[m.end():]
-                        restlines = [" "*tag_indent + l.lstrip() for l in rest.split('|') if l.strip() != ""]
+                        restlines = [" "*tag_indent + l.lstrip() for l in rest.split(self.sep_symbol)
+                                     if l.strip() != ""]
                         if restlines:
                             current_indent = tag_indent
                         for restline in reversed(restlines):
@@ -277,7 +338,6 @@ class QqParser(object):
                             numbers.append(i)
 
                         continue
-
 
             # Process inline tags
 
@@ -302,7 +362,7 @@ class QqParser(object):
                             # TODO: Special handlers for [] tags (e.g. short references syntax etc.)
 
                             chunk.append(line[cursor: m.start()])
-                            current_tag.append_line("".join(chunk))
+                            current_tag.append_line(self.unescape_line("".join(chunk)))
                             chunk = []
 
                             cursor = m.end()
@@ -317,7 +377,7 @@ class QqParser(object):
                     if inline_tag in self.allowed_inline_tags:
                         inline_mode = True
                         chunk.append(line[cursor: m.start()])
-                        current_tag.append_line("".join(chunk))
+                        current_tag.append_line(self.unescape_line("".join(chunk)))
                         chunk = []
 
                         new_tag = QqTag(inline_tag, [])
@@ -333,12 +393,9 @@ class QqParser(object):
                         if inline_mode and m.group(0) == stack[-1].bracket:
                             stack[-1].bracket_counter += 1
 
-
-
-
             # Append the rest of line to current tag
             chunk.append(line[cursor:])
 
-        current_tag.append_line("".join(chunk))
+        current_tag.append_line(self.unescape_line("".join(chunk)))
 
         return tree

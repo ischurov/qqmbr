@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<!--
+# (c) Ilya V. Schurov, 2016
+# Available under MIT license (see LICENSE file in the root folder)
+-->
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Preview</title>
+    <style type="text/css">
+        span.env-title, span.paragraph {
+            font-weight: bold;
+        }
+        img.figure {
+            margin-left: auto;
+            margin-right: auto;
+            display: block;
+        }
+        div.figure {
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+{{ html | safe }}
+<script src='https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML'></script>
+    <script type="text/x-mathjax-config">
+  MathJax.Hub.Config({
+    extensions: ["tex2jax.js"],
+    jax: ["input/TeX", "output/HTML-CSS"],
+    tex2jax: {
+      inlineMath: [ ['$','$'], ["\\(","\\)"] ],
+      displayMath: [ ["\\[","\\]"] ],
+      processEscapes: true
+    },
+    "HTML-CSS": { availableFonts: ["TeX"] }
+  });
+</script>
+</body>
+</html>

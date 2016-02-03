@@ -1,5 +1,8 @@
+# (c) Ilya V. Schurov, 2016
+# Available under MIT license (see LICENSE file in the root folder)
+
 import unittest
-from qqmbr.qqdoc import QqTag, QqParser
+from qqmbr.qqdoc import QqParser
 from qqmbr.qqhtml import QqHTMLFormatter
 
 

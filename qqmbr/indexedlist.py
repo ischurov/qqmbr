@@ -1,3 +1,6 @@
+# (c) Ilya V. Schurov, 2016
+# Available under MIT license (see LICENSE file in the root folder)
+
 from collections import MutableSequence, Sequence, Mapping
 from sortedcontainers import SortedList
 

@@ -1,3 +1,6 @@
+# (c) Ilya V. Schurov, 2016
+# Available under MIT license (see LICENSE file in the root folder)
+
 import unittest
 from qqmbr.indexedlist import IndexedList
 from qqmbr.qqdoc import QqTag, QqParser
@@ -104,7 +107,7 @@ End"""
 """
         parser = QqParser(allowed_tags={'tag', 'othertag'})
         tree = parser.parse(doc)
-        self.assertEqual(tree._othertag._tag.value, 'inline')
+       # self.assertEqual(tree._othertag._tag.value, 'inline')
         self.assertEqual(tree.as_list(), ['_root', 'Hello, ', ['othertag', ['tag', 'inline'], ' tag'], '!\n'])
 
     def test_inline_tag3(self):
@@ -283,3 +286,24 @@ the next one\othertag{okay}}
     ['correct', 'true'],
     'Yes, i like it very much!\n',
     ['comment', 'And so do I!']]]]])
+
+    def test_inline_tag_at_the_beginning_of_the_line(self):
+        doc = r"""\tag
+    some content here here and here and we have some inline
+    \tag{here and \othertag{there}}
+    """
+        parser = QqParser(allowed_tags={'tag', 'othertag'})
+        tree = parser.parse(doc)
+        self.assertEqual(tree.as_list(), ['_root', ['tag','some content here here and here and we have some inline\n',
+                                          ['tag', 'here and ',['othertag', 'there']],'\n\n']])
+
+
+    def test_alias2tag(self):
+        doc = r"""\# Heading 1
+\## Heading 2
+Hello
+"""
+        parser = QqParser(allowed_tags={'h1', 'h2'}, alias2tag={"#": 'h1', "##": 'h2'})
+        tree = parser.parse(doc)
+        self.assertEqual(tree.as_list(), ["_root", ["h1", "Heading 1"], ["h2", "Heading 2"], "Hello\n"])
+

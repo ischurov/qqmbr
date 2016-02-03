@@ -1,3 +1,6 @@
+# (c) Ilya V. Schurov, 2016
+# Available under MIT license (see LICENSE file in the root folder)
+
 import unittest
 from qqmbr.indexedlist import IndexedList
 from sortedcontainers import SortedList
