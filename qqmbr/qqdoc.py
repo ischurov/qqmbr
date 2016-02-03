@@ -225,6 +225,12 @@ class QqParser(object):
         s = s.replace(self.command_symbol*2, self.escape_stub + 'COMMAND_&')
         s = s.replace(self.command_symbol+self.sep_symbol, self.escape_stub + 'SEP_&')
         s = s.replace(self.command_symbol+" ", self.escape_stub + 'SPACE_&')
+        s = s.replace(self.command_symbol+"{", self.escape_stub + 'OPEN_CURVE_&')
+        s = s.replace(self.command_symbol+"[", self.escape_stub + 'OPEN_SQUARE_&')
+        s = s.replace(self.command_symbol+"]", self.escape_stub + 'CLOSE_CURVE_&')
+        s = s.replace(self.command_symbol+"}", self.escape_stub + 'CLOSE_SQUARE_&')
+
+
         return s
         # TODO: write a test for escape/unescape
 
@@ -240,6 +246,11 @@ class QqParser(object):
         s = s.replace(self.escape_stub + 'SPACE_&', " ")
         s = s.replace(self.escape_stub + 'SEP_&', self.sep_symbol)
         s = s.replace(self.escape_stub + 'COMMAND_&', self.command_symbol)
+        s = s.replace(self.escape_stub + 'OPEN_CURVE_&', '{')
+        s = s.replace(self.escape_stub + 'OPEN_SQUARE_&', '[')
+        s = s.replace(self.escape_stub + 'CLOSE_CURVE_&', '}')
+        s = s.replace( self.escape_stub + 'CLOSE_SQUARE_&', ']')
+
         return s
 
     def parse(self, lines):
