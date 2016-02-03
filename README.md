@@ -6,6 +6,7 @@ It was written to allow writing rich content that can be compiled into different
 One source, multiple media: HTML, XML, LaTeX, PDF, eBooks, any other. Look below to see it in action.
 
 ### Highlights
+**qqmbr** is based on **qqDoc** markup. It has the following features:
 
 - Clean syntax. On micro-level, we use well-known [Markdown syntax](https://daringfireball.net/projects/markdown/)
 So all that **bolds** and _italics_ stuff is familiar.
@@ -16,7 +17,34 @@ Figures with captions. Some complicated data that can be used to render somethin
 - Simple parsing. The source is parsed into a kind of [s-expression](https://en.wikipedia.org/wiki/S-expression) 
 which can be transformed into any other format.
 
+### View in action
+You can look at my Lecture Notes on ODE source (see e.g. [this qqDoc source](https://github.com/ischurov/odebook/blob/master/chapter03.qq) and 
+[its HTML render](http://math-info.hse.ru/f/2015-16/nes-ode/chapter03.html), in Russian) or at the [code sample](#code_sample) below.
+
+### Inspiration
+**qqmbr** and **qqDoc** were inspired by various projects and conceptions:
+
+- [Python](https://www.python.org/) for the importance of indents (and it is written in Python too!);
+- [YAML](http://www.yaml.org/) for indent-based markup language;
+- [DocOnce](https://github.com/hplgit/doconce) for 'one source to any media' approach and some ideas on realization;
+- [S-expressions](https://en.wikipedia.org/wiki/S-expression) for simplicity (why they have attributes in XML?)
+
+### Current status
+Currently, we have full-featured **qqDoc** parser and basic *qqHTML* formatter. The following features are on the to-do list:
+
+- setuptools install and PyPI distribution.
+- *qqLaTeX* formatter.
+- more features in *qqHTML*:
+    - snippets and glossary (like [here](http://math-info.hse.ru/odebook/._thebook002.html) (hover on «задача Коши» link).
+    - more math environments (`gather`, `align` and so on);
+    - quizzes, like in DocOnce (see e.g. [here](http://math-info.hse.ru/odebook/._thebook001.html), look for «Контрольный вопрос»);
+    - admonitions (boxes for warning, notice, question, etc.), like in DocOnce.
+
+You are welcome to participate with pull requests and issue-reporting.
+
 ### Code sample
+
+This is an example of **qqmbr** markup (subset of **qqDoc** markup).
 
     \h1 Intro to qqmbr
     
