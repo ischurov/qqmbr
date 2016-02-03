@@ -8,7 +8,7 @@ One source, multiple media: HTML, XML, LaTeX, PDF, eBooks, any other. Look below
 ### Highlights
 **qqmbr** is based on **qqDoc** markup. It has the following features:
 
-- Clean syntax. On micro-level, we use well-known [Markdown syntax](https://daringfireball.net/projects/markdown/)
+- Clean syntax. On micro-level, we use well-known [Markdown syntax](https://daringfireball.net/projects/markdown/).
 So all that **bolds** and _italics_ stuff is familiar. Formula formatting is LaTeX (handled by [MathJax](http://mathjax.org/) in HTML).
 On macro-level we have tags. They are auto-closing: just unindent the line (like in Python). 
 And also we have so-called inline tags, e.g. for ref's (again very LaTeX-like: `\eqref{eq:main}`). 
@@ -106,7 +106,7 @@ This is an example of **qqmbr** markup (subset of **qqDoc** markup).
 
 
 ### qqDoc Syntax
-**qqDoc** is a general-purpose markup (or *metalanguage*, like XML). **qqmbr** is a subset of **qqDoc** markup (or **qqDoc**-based markup language) 
+**qqDoc** is a general-purpose markup (or *metalanguage*, like XML), while **qqmbr** is a subset of **qqDoc** markup (or **qqDoc**-based markup language) 
 used to produce documents in HTML and LaTeX.
 
 Internal representation of **qqDoc** is an [s-expression](https://en.wikipedia.org/wiki/S-expression)-like tree structure. 
@@ -116,6 +116,7 @@ The following rules describe complete **qqDoc** syntax:
 
 #### Special characters
 The following characters have special meaning in **qqDoc**:
+
 1. **Tag beginning character.** This character is used to mark the beginning of any tag. By default, it is backslash `\` 
 (like in LaTeX), but can be configured to any other character. If you need to enter this character literally, you have 
 to escape it with the same character (like `\\`). You can also escape other special characters listed below with *tag beginning character*.
