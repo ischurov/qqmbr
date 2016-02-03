@@ -40,14 +40,15 @@ class Counter():
     """
     Very simple class that support latex-style counters with subcounters.
     For example, if new section begins, the enumeration of subsections resets.
-    str(counter) contains numbers of all its parents
+    If `showparents` option is set, str(counter) contains numbers of all its parents
     That's all.
     """
 
-    def __init__(self):
+    def __init__(self, showparents = False):
         self.value = 0
         self.child = None
         self.parent = None
+        self.showparents = showparents
 
     def reset(self):
         self.value = 0
@@ -66,7 +67,7 @@ class Counter():
 
     def __str__(self):
         my_str = str(self.value)
-        if self.parent:
+        if self.parent and self.showparents:
             my_str = str(self.parent) + "." + my_str
         return my_str
 
@@ -233,10 +234,7 @@ class QqHTMLFormatter(object):
         """
         doc, html, text = Doc().tagtext()
         with html(tag.name):
-            if tag.find("label"):
-                doc.attr(id=self.label2id(tag._label.value))
-            elif tag.find("number"):
-                doc.attr(id=self.label2id(tag.name+"_number_"+str(tag._number.value)))
+            doc.attr(id=self.h_id(tag))
             if tag.find("number"):
                 with html("span", klass="section__number"):
                     text(tag._number.value + ". ")
@@ -310,7 +308,7 @@ class QqHTMLFormatter(object):
 
     def handle_enumerateable(self, tag):
         """
-        Uses tags: label, number
+        Uses tags: label, number, name
         Add tags used manually from enumerateable_envs
 
         :param tag:
@@ -421,3 +419,48 @@ class QqHTMLFormatter(object):
     def do_format(self):
         self.preprocess(self.root)
         return self.format(self.root, markdown=True)
+
+    def h_id(self, tag):
+        """
+        Returns id of h:
+        - If it has label, it is label-based
+        - If it does not have label, but have number (which is true after preprocess for all h's), it is number-based
+        :param tag:
+        :return:
+        """
+        if tag.find("label"):
+            return self.label2id(tag._label.value)
+        elif tag.find("number"):
+            return self.label2id(tag.name+"_number_"+str(tag._number.value))
+        else:
+            return ""
+
+    def mk_toc(self, maxlevel=2, targetpage=""):
+        doc, html, text = Doc().tagtext()
+        curlevel = 1
+        with html("ul", klass="nav"):
+            for child in self.root:
+                chunk = []
+                if isinstance(child, QqTag):
+                    m = re.match(r'h(\d)', child.name)
+                    if m:
+                        hlevel = int(m.group(1))
+                        if hlevel > maxlevel:
+                            continue
+                        while hlevel > curlevel:
+                            chunk.append("<li><ul class='nav'>\n")
+                            curlevel += 1
+                        while hlevel < curlevel:
+                            chunk.append("</ul></li>\n")
+                            curlevel -= 1
+                        item_doc, item_html, item_text = Doc().tagtext()
+                        with item_html("li", klass = "toc_item toc_item_level_%i" % curlevel):
+                            with item_html("a", href=targetpage+"#"+self.h_id(child)):
+                                item_text(self.format(child))
+                        chunk.append(item_doc.getvalue())
+                        doc.asis("".join(chunk))
+        return doc.getvalue()
+
+
+
+

@@ -3,7 +3,9 @@
 
 from qqmbr.qqdoc import QqParser
 from qqmbr.qqhtml import QqHTMLFormatter
+import qqmbr.odebook
 import os
+import numpy
 from flask import Flask, render_template, abort, send_from_directory
 app = Flask(__name__, static_url_path='')
 
@@ -25,10 +27,11 @@ def show_html(filename):
     parser.allowed_tags.update(formatter.uses_tags())
     tree = parser.parse(lines)
     formatter.root = tree
+    formatter.pythonfigure_globals.update({'ob': qqmbr.odebook, 'np': numpy})
     html = formatter.do_format()
     print(html)
     print(tree.as_list())
-    return render_template("preview.html", html=html)
+    return render_template("preview.html", html=html, title=tree._h1.text_content, toc=formatter.mk_toc())
 
 if __name__ == "__main__":
     app.run()

@@ -20,5 +20,5 @@ class TestQqHtmlMethods(unittest.TestCase):
         html = QqHTMLFormatter(tree)
         s = html.do_format()
         self.assertEqual(s, ("""<h1 id="label_h1_label"><span class="section__number">1. </span>Hello\n</h1>"""
-                             """<h2 id="label_h2_number_1_1"><span class="section__number">1.1. </span>"""
+                             """<h2 id="label_h2_number_1"><span class="section__number">1. </span>"""
                              """World\n</h2>"""))
