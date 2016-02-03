@@ -19,7 +19,7 @@ which can be transformed into any other format.
 
 ### View in action
 You can look at my Lecture Notes on ODE source (see e.g. [this qqDoc source](https://github.com/ischurov/odebook/blob/master/chapter03.qq) and 
-[its HTML render](http://math-info.hse.ru/f/2015-16/nes-ode/chapter03.html), in Russian) or at the [code sample](#code_sample) below.
+[its HTML render](http://math-info.hse.ru/f/2015-16/nes-ode/chapter03.html), in Russian) or at the [code sample](#code-sample) below.
 
 ### Inspiration
 **qqmbr** and **qqDoc** were inspired by various projects and conceptions:
