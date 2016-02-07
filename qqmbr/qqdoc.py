@@ -1,7 +1,7 @@
 # (c) Ilya V. Schurov, 2016
 # Available under MIT license (see LICENSE file in the root folder)
 
-from collections import Sequence
+from collections import Sequence, MutableSequence
 from qqmbr.indexedlist import IndexedList
 import re
 
@@ -10,7 +10,7 @@ class QqError(Exception):
     pass
 
 
-class QqTag(object):
+class QqTag(MutableSequence):
     """
     QqTag is essentially an IndexedList with name attached. It behaves mostly like eTree Element.
 
@@ -183,6 +183,18 @@ class QqTag(object):
             return tag.value
         else:
             return default_value
+
+    def get_granny(self):
+        """
+        Returns ancestor which is direct child of root
+
+        :return:
+        """
+        if not self.parent:
+            return None
+        if not self.parent.parent:
+            return self
+        return self.parent.get_granny()
 
 
 class StackElement(object):

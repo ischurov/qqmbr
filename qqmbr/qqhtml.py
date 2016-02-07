@@ -8,6 +8,7 @@ import re
 import inspect
 import hashlib
 import os
+import urllib.parse
 
 import matplotlib
 matplotlib.use('Agg')
@@ -86,8 +87,10 @@ class QqHTMLFormatter(object):
         self.root = root
         self.counters = {}
         self.chapters = []
-        
-        self.current_chapter = None
+        self.mode = 'wholedoc'
+        #: how to render the doc? the following options are available:
+        #: - 'wholedoc' - the whole document on one page
+        #: - 'bychapters' - every chapter on its own page
 
         self.counters['h1'] = Counter()
         self.counters['h2'] = self.counters['h1'].spawn_child()
@@ -298,12 +301,20 @@ class QqHTMLFormatter(object):
         :return:
         """
         doc, html, text = Doc().tagtext()
-        ref = tag.value.strip()
-        number = self.label2number.get(ref, "???")
+        label = tag.value.strip()
+        number = self.label2number.get(label, "???")
+        target = self.label2tag[label]
+        href = ""
+        if self.mode == 'bychapters':
+            if self.tag2chapter(tag) != self.tag2chapter(target):
+                href = self.url_for_chapter(self.tag2chapter(target))
+
+        href += "#"+self.label2id(label)
+
         with html("span", klass="ref"):
-            with html("a", klass="a-ref", href="#"+self.label2id(ref),
-                      title=self.label2title.get(ref, "")):
-                if self.label2tag.get(ref) and self.label2tag[ref].name in self.formulaenvs:
+            with html("a", klass="a-ref", href=href,
+                      title=self.label2title.get(label, "")):
+                if self.label2tag.get(label) and self.label2tag[label].name in self.formulaenvs:
                     text("(" + number + ")")
                 else:
                     text(number)
@@ -413,7 +424,6 @@ class QqHTMLFormatter(object):
 
         :return:
         """
-        curchapter = None
         for tag in root:
             if isinstance(tag, QqTag):
                 name = tag.name
@@ -427,26 +437,56 @@ class QqHTMLFormatter(object):
                         self.label2number[label] = str(counter)
                         self.label2title[label] = tag.text_content
                 if tag.find('label') and tag.find('number'):
-                    self.label2number[tag._label.value] = tag._number.value
+                    self.label2number[tag._label.value.strip()] = tag._number.value
                 if tag.find('label'):
-                    self.label2tag[tag._label.value] = tag
+                    self.label2tag[tag._label.value.strip()] = tag
                 self.preprocess(tag)
 
+
+    def mk_chapters(self):
+        curchapter = {'header': QqTag("_zero_chapter"), 'content': []}
+        self.chapters = []
+        for tag in self.root:
             if isinstance(tag, QqTag) and tag.name == 'h1':
-                if curchapter:
-                    self.add_chapter(curchapter)
+                self.add_chapter(curchapter)
                 curchapter = {'header': tag, 'content': []}
+            curchapter['content'].append(tag)
+        self.add_chapter(curchapter)
 
-            if curchapter:
-                curchapter['content'].append(tag)
 
-        if curchapter:
-            self.add_chapter(curchapter)
+
+
+
+
+
+    def tag2chapter(self, tag):
+        """
+        Returns the number of chapter to which tag belongs.
+
+        Chapters are separated by `h1` tag. Chapter before the first `h1` tag has number zero.
+
+        :param tag:
+        :return:
+        """
+        granny = tag.get_granny()
+        headers = self.root("h1")
+        for i, header in enumerate(headers, 1):
+            if granny.my_index < header.my_index:
+                return i - 1
+        return i
+
+    def url_for_chapter(self, index = None, label = None):
+        assert index is not None or label is not None
+        if index:
+            return "/chapter/index/"+urllib.parse.quote(str(index))
+        else:
+            return "/chapter/label/"+urllib.parse.quote(str(label))
 
     def add_chapter(self, chapter):
         if chapter['header'].find("label"):
             self.label2chapter[chapter['header']._label.value] = len(self.chapters)
         self.chapters.append(chapter)
+
 
     def do_format(self):
         self.preprocess(self.root)

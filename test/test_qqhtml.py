@@ -59,6 +59,30 @@ See \ref{eq:x2y2}.
         self.assertEqual(soup.a['href'], '#label_eq_x2y2')
         self.assertEqual(soup.a.string, "(1)")
 
+    def test_tag2chapter(self):
+        parser = QqParser(allowed_tags={'h1', 'h2', 'h3', 'h4', 'eq', 'eqref', 'ref', 'equation', 'label', 'idx', 'remark', 'author'})
+        doc = r"""\author Ilya V. Schurov
+\h1 Chapter 1
+This is the first chapter
+\equation \label eq1
+    x^2 + y^2
+
+\h1 Chapter 2
+This is the second chapter
+\h2 Section 1
+Hello
+\remark \label rem
+    This is the end. \ref{eq1}
+"""
+        tree = parser.parse(doc)
+        html = QqHTMLFormatter(tree)
+        self.assertEqual(html.tag2chapter(tree._author), 0)
+        self.assertEqual(html.tag2chapter(tree._equation), 1)
+        self.assertEqual(html.tag2chapter(tree._equation._label), 1)
+        self.assertEqual(html.tag2chapter(tree._remark), 2)
+        self.assertEqual(html.tag2chapter(tree._remark._ref), 2)
+
+
 
 
 

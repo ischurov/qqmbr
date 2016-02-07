@@ -108,22 +108,21 @@ class IndexedList(MutableSequence):
     def get_key(self, item):
         if isinstance(item, str):
             return str
-        elif isinstance(item, Sequence):
-            if item:
-                return item[0]
+        try:
+            return item.__qqkey__()
+        except AttributeError:
+            if isinstance(item, Sequence):
+                if item:
+                    return item[0]
+                else:
+                    return None
+            elif isinstance(item, Mapping):
+                if len(item) == 1:
+                    return list(item)[0]
+                else:
+                    return Mapping
             else:
-                return None
-        elif isinstance(item, Mapping):
-            if len(item) == 1:
-                return list(item)[0]
-            else:
-                return Mapping
-        else:
-            try:
-                ret = item.__qqkey__()
-            except AttributeError:
-                ret = str
-        return ret
+                return str
 
 
 
