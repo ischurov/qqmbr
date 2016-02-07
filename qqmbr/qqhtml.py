@@ -44,7 +44,7 @@ class Counter():
     That's all.
     """
 
-    def __init__(self, showparents = False):
+    def __init__(self, showparents=False):
         self.value = 0
         self.child = None
         self.parent = None
@@ -79,10 +79,15 @@ class QqHTMLFormatter(object):
 
     def __init__(self, root: QqTag=None):
 
-        self.ref2number = {}
-        self.ref2title = {}
+        self.label2number = {}
+        self.label2title = {}
+        self.label2tag = {}
+        self.label2chapter = {}
         self.root = root
         self.counters = {}
+        self.chapters = []
+        
+        self.current_chapter = None
 
         self.counters['h1'] = Counter()
         self.counters['h2'] = self.counters['h1'].spawn_child()
@@ -96,6 +101,7 @@ class QqHTMLFormatter(object):
                                                                      'definition', 'proposition', 'lemma']}
 
         # You can make self.localnames = {} to use plain English localization
+
         self.localnames = {
             'Remark': 'Замечание',
             'Theorem': 'Теорема',
@@ -109,6 +115,8 @@ class QqHTMLFormatter(object):
             'Figure': 'Рисунок',
             'Fig.': "Рис."
         }
+
+        self.formulaenvs = {'eq', 'equation'}
 
         enum_envs_counter = self.counters['h1'].spawn_child()
 
@@ -208,13 +216,19 @@ class QqHTMLFormatter(object):
     def label2id(self, label):
         return "label_" + mk_safe_css_ident(label.strip())
 
-    def format(self, tag: QqTag, markdown = False):
-        if tag is None:
+    def format(self, content, markdown = False):
+        """
+
+        :param content: could be QqTag or any iterable of QqTags
+        :param markdown: use markdown (True or False)
+        :return: str: text of tag
+        """
+        if content is None:
             return ""
 
         out = []
 
-        for child in tag:
+        for child in content:
             if isinstance(child, str):
                 if markdown:
                     # Preserve whitespaces (markdown will remove it)
@@ -284,27 +298,27 @@ class QqHTMLFormatter(object):
         :return:
         """
         doc, html, text = Doc().tagtext()
-        number = self.ref2number.get(tag.value.strip(), "???")
         ref = tag.value.strip()
+        number = self.label2number.get(ref, "???")
         with html("span", klass="ref"):
             with html("a", klass="a-ref", href="#"+self.label2id(ref),
-                      title=self.ref2title.get(ref,"")):
-                text(number)
+                      title=self.label2title.get(ref, "")):
+                if self.label2tag.get(ref) and self.label2tag[ref].name in self.formulaenvs:
+                    text("(" + number + ")")
+                else:
+                    text(number)
         return doc.getvalue()
 
     def handle_eqref(self, tag):
         """
-        Uses tags: eqref
+        Alias to handle_ref
+
+        Refs to formulas are ALWAYS in parenthesis
 
         :param tag:
         :return:
         """
-        doc, html, text = Doc().tagtext()
-        number = self.ref2number.get(tag.value, "???")
-        with html("span", klass="ref"):
-            with html("a", klass="a-ref", href="#"+self.label2id(tag.value.strip())):
-                text("("+number+")")
-        return doc.getvalue()
+        return self.handle_ref(tag)
 
     def handle_enumerateable(self, tag):
         """
@@ -393,13 +407,13 @@ class QqHTMLFormatter(object):
                         doc.asis(self.format(child, markdown=True))
         return doc.getvalue()
 
-
     def preprocess(self, root: QqTag):
         """
         Uses tags: number, label, nonumber
 
         :return:
         """
+        curchapter = None
         for tag in root:
             if isinstance(tag, QqTag):
                 name = tag.name
@@ -410,11 +424,29 @@ class QqHTMLFormatter(object):
                     tag.append_child(QqTag({'number': str(counter)}))
                     if tag.find('label'):
                         label = tag._label.value.strip()
-                        self.ref2number[label] = str(counter)
-                        self.ref2title[label] = tag.text_content
+                        self.label2number[label] = str(counter)
+                        self.label2title[label] = tag.text_content
                 if tag.find('label') and tag.find('number'):
-                    self.ref2number[tag._label.value] = tag._number.value
+                    self.label2number[tag._label.value] = tag._number.value
+                if tag.find('label'):
+                    self.label2tag[tag._label.value] = tag
                 self.preprocess(tag)
+
+            if isinstance(tag, QqTag) and tag.name == 'h1':
+                if curchapter:
+                    self.add_chapter(curchapter)
+                curchapter = {'header': tag, 'content': []}
+
+            if curchapter:
+                curchapter['content'].append(tag)
+
+        if curchapter:
+            self.add_chapter(curchapter)
+
+    def add_chapter(self, chapter):
+        if chapter['header'].find("label"):
+            self.label2chapter[chapter['header']._label.value] = len(self.chapters)
+        self.chapters.append(chapter)
 
     def do_format(self):
         self.preprocess(self.root)

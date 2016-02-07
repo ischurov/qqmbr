@@ -46,6 +46,33 @@ class TestQqTagMethods(unittest.TestCase):
         self.assertEqual(q[1].value, 'world')
         self.assertEqual(q[3][0].value, 'way')
 
+    def test_qqtag_backlinks(self):
+        q = QqTag('a', [
+            QqTag('b', 'hello'),
+            QqTag('c', 'world'),
+            QqTag('b', 'this'),
+            QqTag('--+-', [
+                QqTag('b', 'way'),
+                "this"
+            ])])
+        self.assertTrue(q._is_consistent())
+        new_tag = QqTag({'qqq' : 'bbb'})
+        q.append_child(new_tag)
+        self.assertEqual(new_tag.my_index, 4)
+        del q[0]
+        self.assertEqual(new_tag.my_index, 3)
+        self.assertTrue(q._is_consistent())
+
+        other_tag = QqTag({'other': ['some', 'values']})
+        q.insert(2, other_tag)
+        self.assertEqual(other_tag.my_index, 2)
+        self.assertEqual(new_tag.my_index, 4)
+
+        third_tag = QqTag({'this': 'hi'})
+        q[3] = third_tag
+        self.assertEqual(third_tag.my_index, 3)
+        self.assertTrue(q._is_consistent())
+
 
 class TestQqParser(unittest.TestCase):
     def test_block_tags1(self):

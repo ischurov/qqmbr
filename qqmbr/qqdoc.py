@@ -24,13 +24,14 @@ class QqTag(object):
     If QqTag has only one child, it is called *simple*. Then its `.value` is defined. (Useful for access
     to property-like subtags.)
     """
-    def __init__(self, name, children=None, parent=None):
+    def __init__(self, name, children=None, parent=None, my_index=None):
         if isinstance(name, dict) and len(name) == 1:
             self.__init__(*list(name.items())[0], parent=parent)
             return
 
         self.name = name
         self.parent = parent
+        self.my_index = my_index
 
         if children is None:
             self._children = IndexedList()
@@ -40,6 +41,11 @@ class QqTag(object):
             self._children = IndexedList(children)
         else:
             raise QqError("I don't know what to do with children " + str(children))
+
+        for i, child in enumerate(self):
+            if isinstance(child, QqTag):
+                child.parent = self
+                child.my_index = i
 
     def __repr__(self):
         if self.parent is None:
@@ -109,9 +115,26 @@ class QqTag(object):
                 ret.append(child)
         return ret
 
-    def append_child(self, child):
-        self._children.append(child)
+    def insert(self, index: int, child) -> None:
+        self._children.insert(index, child)
         child.parent = self
+        child.my_index = index
+        for i in range(index+1, len(self)):
+            self._children[i].my_index += 1
+
+    def __delitem__(self, index: int):
+        del self._children[index]
+        for i in range(index, len(self)):
+            self._children[i].my_index -= 1
+
+    def append_child(self, child):
+        self.insert(len(self), child)
+
+    def _is_consistent(self):
+        for i, child in enumerate(self):
+            if child.parent != self or child.my_index != i:
+                return False
+        return True
 
     def append_line(self, line):
         if line:
@@ -120,8 +143,10 @@ class QqTag(object):
     def __getitem__(self, item):
         return self._children[item]
 
-    def __setitem__(self, key, value):
-        self._children[key] = value
+    def __setitem__(self, index, child):
+        self._children[index] = child
+        child.parent = self
+        child.my_index = index
 
     def __iter__(self):
         return iter(self._children)
