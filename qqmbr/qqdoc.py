@@ -16,7 +16,7 @@ class QqTag(MutableSequence):
 
     It provides eTree and BeautifulSoup-style navigation over its child:
     - ``tag.find('subtag')`` returns first occurrence of a child with name ``subtag``. (Note that
-    in contrast with BeatifulSoup, this is not recursive: it searches only through tag's childrens.)
+    in contrast with BeautifulSoup, this is not recursive: it searches only through tag's direct childrens.)
     - ``tag._subtag`` is a shortcut for ``tag.find('subtag')`` (works if ``subtag`` is valid identifier)
     - ``tag.find_all('subtag')`` returns all occurrences of tag with name 'subtag'
     - ``tag('subtag')`` is shortcut for ``tag.find_all('subtag')``

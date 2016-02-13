@@ -192,11 +192,16 @@ Tag name doesn't necessary should be valid Python identifier, e.g. one can intro
     \### I'm header of 3'd level
     \#### And I'm header of 4'th level
 
+Tag name cannot contain space-like characters, opening brackets `{` and `[`, separator character (default `|`) 
+and ampresand `&` (as it is used internally to escape special characters).
+
 #### Inline tags
-Inline tags are started with *tag beginning character* and ended by bracket: `{` or `[`. Curve bracket is 
-the default, square brackets are reserved to allow special handlers of some tags in future. Tag contents is everything
-between its opening bracket and corresponding closing bracket. Brackets (of the same kind) inside the tag should be either
-balanced or escaped.
+Inline tags are started with *tag beginning character* and ended by bracket: `{` or `[`. Type of bracket affects the 
+processing. Tag contents is everything between its opening bracket and corresponding closing bracket. 
+It can spread over several lines, however it is forbidden to open new block tags inside inline tags (but it is possible
+to do so with special processing of square brackets, see below).
+
+Brackets (of the same kind) inside the tag should be either balanced or escaped.
 
 For example,
 
@@ -204,8 +209,34 @@ For example,
     
 is valid markup: the contents of tag `tag` will be `with some {brackets inside}`.
 
-Inline tags may be extended through several lines, but it is forbidden to open or close block tags inside inline tag.
+#### Square bracket inline tags
+The content of tags with square brackets are processed just like the first line of block tag: it is splitted by block tags
+and *separator character*, the latter character is replaced with \separator tag, 
+after the split each part is placed on its own line and processed in usual way.
 
+For example
+
+    Look at \a[Wikipedia, free encyclopedia\href http://ru.wikipedia.org].
+    
+Is equivalent to
+
+    Look at
+    \a
+        Wikipedia, free encyclopedia
+        \href
+            http://ru.wikipedia.org
+
+Another example:
+
+    \ref[Theorem|thm:existence]
+    
+Is equivalent to
+    
+    \ref
+        Theorem
+        \separator
+        thm:existence
+ 
 There is no difference between block tags and inline tags in terms of resulting tree.
 
 #### Allowed tags
@@ -234,47 +265,3 @@ For example, the following is forbidden:
       some string with indent 2
 
 It is possible to use any indent values but multiples of 4 are recommended (like [PEP-8](https://www.python.org/dev/peps/pep-0008/)).
-
-#### Planned: pipe-syntax for inline tags
-Use cases:
-
-    \ref[Theorem|thm:existence] ->
-    
-    \ref
-        Theorem
-        \separator
-        thm:existence
-    
-            <a href="#thm:existence">Theorem 1</a>
-    
-    ----
-    
-    \snippet[Initial Value Problem|def:IVP] ->
-    
-    \snippet
-        Initial Value Problem
-        \separator
-        def:IVP
-        
-            <a data-url="/snippet/def:IVP">Initial Value Problem</a>
-    ----
-    
-    \a[http://ru.wikipedia.org|Wikipedia, the free encyclopedia] ->
-    
-    \a
-        http://ru.wikipedia.org
-        \separator
-        Wikipedia, the fre encyclopedia
-        
-#### Planned: split line by pipes and tags
-    
-    \tag something \subtag other | this \is \a \test
-
-    \tag
-        something
-        \subtag other
-        \separator
-        this
-        \is
-        \a
-        \test
