@@ -407,7 +407,7 @@ Hello
         doc = r"""\splittedtag[one|two\three|four]"""
         parser = QqParser(allowed_tags={'splittedtag', 'three'})
         tree = parser.parse(doc)
-        splitted = parser.split_by_sep(tree._splittedtag)
+        splitted = tree._splittedtag.split_by_sep()
 
         self.assertEqual(splitted, [['one'], ['two', QqTag('three')], ['four']])
 

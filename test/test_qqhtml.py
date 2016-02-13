@@ -83,6 +83,22 @@ Hello
         self.assertEqual(html.tag2chapter(tree._remark), 2)
         self.assertEqual(html.tag2chapter(tree._remark._ref), 2)
 
+    def test_ref_with_separator(self):
+        doc = r"""\h1 Hello \label sec:first
+
+See \ref[section|sec:first] for details.
+"""
+        parser = QqParser()
+        formatter = QqHTMLFormatter()
+        parser.allowed_tags.update(formatter.uses_tags())
+        tree = parser.parse(doc)
+        formatter.root = tree
+        html = formatter.do_format()
+        print(html)
+        soup = BeautifulSoup(html, "html.parser")
+        self.assertEqual(soup.a['href'], "#label_sec_first")
+        self.assertEqual(soup.a.string, "section 1")
+
 
 
 

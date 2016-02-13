@@ -206,6 +206,19 @@ class QqTag(MutableSequence):
             return None
         return self.parent[self.my_index - 1]
 
+    def split_by_sep(self, separator='separator'):
+        chunks = []
+        chunk = []
+        sep = QqTag(separator)
+        for child in self:
+            if child == sep:
+                chunks.append(chunk)
+                chunk = []
+            else:
+                chunk.append(child)
+        chunks.append(chunk)
+        return chunks
+
 
 class StackElement(object):
     def __init__(self, tag, indent=0, bracket=None, bracket_counter=0):
@@ -562,16 +575,3 @@ class QqParser(object):
         current_tag.append_line(self.unescape_line("".join(chunk)))
 
         return tree
-
-    def split_by_sep(self, tag):
-        chunks = []
-        chunk = []
-        sep = QqTag(self.separator)
-        for child in tag:
-            if child == sep:
-                chunks.append(chunk)
-                chunk = []
-            else:
-                chunk.append(child)
-        chunks.append(chunk)
-        return chunks

@@ -306,19 +306,26 @@ class QqHTMLFormatter(object):
         :return:
         """
         doc, html, text = Doc().tagtext()
-        label = tag.value.strip()
+        if tag.is_simple:
+            prefix = None
+            label = tag.value
+        else:
+            prefix, labelfield = tag.split_by_sep()
+            label = "".join(labelfield)
+
         number = self.label2number.get(label, "???")
         target = self.label2tag[label]
         href = ""
         if self.mode == 'bychapters':
-            if self.tag2chapter(tag) != self.tag2chapter(target):
-                href = self.url_for_chapter(self.tag2chapter(target))
+            href = self.url_for_chapter(self.tag2chapter(target), fromindex=self.tag2chapter(tag))
 
         href += "#"+self.label2id(label)
 
         with html("span", klass="ref"):
             with html("a", klass="a-ref", href=href,
                       title=self.label2title.get(label, "")):
+                if prefix:
+                    doc.asis(self.format(prefix, markdown=True) + " ")
                 if self.label2tag.get(label) and self.label2tag[label].name in self.formulaenvs:
                     text("(" + number + ")")
                 else:
@@ -450,13 +457,13 @@ class QqHTMLFormatter(object):
                     counter.increase()
                     tag.append_child(QqTag({'number': str(counter)}))
                     if tag.find('label'):
-                        label = tag._label.value.strip()
+                        label = tag._label.value
                         self.label2number[label] = str(counter)
                         self.label2title[label] = tag.text_content
                 if tag.find('label') and tag.find('number'):
-                    self.label2number[tag._label.value.strip()] = tag._number.value
+                    self.label2number[tag._label.value] = tag._number.value
                 if tag.find('label'):
-                    self.label2tag[tag._label.value.strip()] = tag
+                    self.label2tag[tag._label.value] = tag
                 self.preprocess(tag)
 
 
@@ -488,19 +495,28 @@ class QqHTMLFormatter(object):
                 return i - 1
         return i
 
-    def url_for_chapter(self, index=None, label=None) -> str:
+    def url_for_chapter(self, index=None, label=None, fromindex=None) -> str:
+        """
+        Returns url for chapter. Either index or label of the target chapter have to be provided.
+        Optionally, fromindex can be provided. In this case function will return empty string if
+        target chapter coincides with current one.
+        """
         assert index is not None or label is not None
-        if index:
+        if index is None:
+            index = self.label2chapter[label]
+        if fromindex is not None and fromindex == index:
+            # we are already on the right page
+            return ""
+        if label is None:
             label = self.chapters[index].header.find("label")
-            if not label:
-                return "/chapter/index/" + urllib.parse.quote(str(index))
-        return "/chapter/label/" + urllib.parse.quote(label.value.strip())
+        if not label:
+            return "/chapter/index/" + urllib.parse.quote(str(index))
+        return "/chapter/label/" + urllib.parse.quote(label.value)
 
     def add_chapter(self, chapter):
         if chapter.header.find("label"):
             self.label2chapter[chapter.header._label.value] = len(self.chapters)
         self.chapters.append(chapter)
-
 
     def do_format(self):
         self.preprocess(self.root)
@@ -557,9 +573,7 @@ class QqHTMLFormatter(object):
                             chunk.append("</ul></li>\n")
                             curlevel -= 1
 
-                        targetpage = ""
-                        if chapter is not None and curchapter != chapter:
-                            targetpage = self.url_for_chapter(index=curchapter)
+                        targetpage = self.url_for_chapter(index=curchapter, fromindex=chapter)
 
                         item_doc, item_html, item_text = Doc().tagtext()
                         with item_html("li", klass = "toc_item toc_item_level_%i" % curlevel):
