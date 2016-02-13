@@ -83,7 +83,7 @@ This is an example of **qqmbr** markup (subset of **qqDoc** markup).
     
     We can reference formula \eqref{eq:Fermat} and \eqref{eq:2x2} just like we referenced header before.
     
-    \h3 Another level-3 header | \label sec:another
+    \h3 Another level-3 header \label sec:another
     
     Here is the header we referenced.
     
@@ -147,10 +147,10 @@ will be translated into the following XML tree:
     I'm fine
 
 The rest of line where block tag begins will be attached to that tag either, but it will be handled a bit differently
-if it contains a *separator character*. If there is such character, then the line is splitted by this character and all parts
-are attached to the tag as if they were on different lines. For example:
+if it contains other valid block tags or a *separator character*. Every such tag and separator character begins new line.
+Separator character is replaced with \separator tag. For example:
 
-    \image \src http://example.com | \width 100%
+    \image \src http://example.com \width 100%
         Some image
 
 Is equivalent to
@@ -173,20 +173,20 @@ And renders to the following XML:
     </width>
     Some image
     </image>
+
+Also
+
+    \a http://example.com | some example
     
+Is translated to
+
+    \a
+        http://example.com
+        \separator
+        some example
+        
 This allows to add attribute-like subtags in a compact way.
 
-Note that if several tags are on the first line without separator character, they will be nested:
-
-    \tag1 \tag2 \tag3 test
-    
-Is equivalent to
-
-    \tag1
-        \tag2
-            \tag3
-                test
-                
 Tag name doesn't necessary should be valid Python identifier, e.g. one can introduce markdown-style header tags like
 
     \### I'm header of 3'd level
@@ -234,3 +234,47 @@ For example, the following is forbidden:
       some string with indent 2
 
 It is possible to use any indent values but multiples of 4 are recommended (like [PEP-8](https://www.python.org/dev/peps/pep-0008/)).
+
+#### Planned: pipe-syntax for inline tags
+Use cases:
+
+    \ref[Theorem|thm:existence] ->
+    
+    \ref
+        Theorem
+        \separator
+        thm:existence
+    
+            <a href="#thm:existence">Theorem 1</a>
+    
+    ----
+    
+    \snippet[Initial Value Problem|def:IVP] ->
+    
+    \snippet
+        Initial Value Problem
+        \separator
+        def:IVP
+        
+            <a data-url="/snippet/def:IVP">Initial Value Problem</a>
+    ----
+    
+    \a[http://ru.wikipedia.org|Wikipedia, the free encyclopedia] ->
+    
+    \a
+        http://ru.wikipedia.org
+        \separator
+        Wikipedia, the fre encyclopedia
+        
+#### Planned: split line by pipes and tags
+    
+    \tag something \subtag other | this \is \a \test
+
+    \tag
+        something
+        \subtag other
+        \separator
+        this
+        \is
+        \a
+        \test

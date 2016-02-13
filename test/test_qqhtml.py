@@ -2,7 +2,7 @@
 # Available under MIT license (see LICENSE file in the root folder)
 
 import unittest
-from qqmbr.qqdoc import QqParser
+from qqmbr.qqdoc import QqParser, QqTag
 from qqmbr.qqhtml import QqHTMLFormatter
 from bs4 import BeautifulSoup
 
@@ -60,7 +60,8 @@ See \ref{eq:x2y2}.
         self.assertEqual(soup.a.string, "(1)")
 
     def test_tag2chapter(self):
-        parser = QqParser(allowed_tags={'h1', 'h2', 'h3', 'h4', 'eq', 'eqref', 'ref', 'equation', 'label', 'idx', 'remark', 'author'})
+        parser = QqParser(allowed_tags={'h1', 'h2', 'h3', 'h4', 'eq', 'eqref', 'ref',
+                                        'equation', 'label', 'idx', 'remark', 'author'})
         doc = r"""\author Ilya V. Schurov
 \h1 Chapter 1
 This is the first chapter

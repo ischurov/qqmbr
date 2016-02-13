@@ -3,6 +3,7 @@
 
 from qqmbr.qqdoc import QqTag
 from yattag import Doc
+from collections import namedtuple
 import mistune
 import re
 import inspect
@@ -75,6 +76,7 @@ class Counter():
 def join_nonempty(*args, sep=" "):
     return sep.join(x for x in args if x)
 
+Chapter = namedtuple('Chapter', ('header', 'content'))
 
 class QqHTMLFormatter(object):
 
@@ -87,6 +89,8 @@ class QqHTMLFormatter(object):
         self.root = root
         self.counters = {}
         self.chapters = []
+
+
         self.mode = 'wholedoc'
         #: how to render the doc? the following options are available:
         #: - 'wholedoc' - the whole document on one page
@@ -130,7 +134,7 @@ class QqHTMLFormatter(object):
         self.markdown = mistune.Markdown(renderer=mistune_renderer)
         self.figures_dir = "fig"
 
-        self.figures_prefix = "fig/"
+        self.figures_prefix = "/fig/"
         #: prefix for urls to figures_dir
 
         self.default_figname = "fig"
@@ -146,7 +150,7 @@ class QqHTMLFormatter(object):
             exts = (exts, )
         hashsum = hashlib.md5(code.encode('utf8')).hexdigest()
         prefix = hashsum[:2]
-        path = os.path.join(self.figures_prefix, prefix, hashsum)
+        path = os.path.join(self.figures_dir, prefix, hashsum)
         needfigure = False
         for ext in exts:
             if not os.path.isfile(os.path.join(path, self.default_figname + "." + ext)):
@@ -170,6 +174,8 @@ class QqHTMLFormatter(object):
         handles = [member for member in members if member[0].startswith("handle_") or member[0] == 'preprocess']
         alltags = set([])
         for handle in handles:
+            if handle[0].startswith("handle_"):
+                alltags.add(handle[0][len("handle_"):])
             doc = handle[1].__doc__
             if not doc:
                 continue
@@ -219,7 +225,7 @@ class QqHTMLFormatter(object):
     def label2id(self, label):
         return "label_" + mk_safe_css_ident(label.strip())
 
-    def format(self, content, markdown = False):
+    def format(self, content, markdown = False) -> str:
         """
 
         :param content: could be QqTag or any iterable of QqTags
@@ -242,7 +248,7 @@ class QqHTMLFormatter(object):
                 out.append(self.handle(child))
         return "".join(out)
 
-    def handle_h(self, tag):
+    def handle_h(self, tag: QqTag) -> str:
         """
         Uses tags: h1, h2, h3, h4, label, number
 
@@ -256,13 +262,14 @@ class QqHTMLFormatter(object):
                 with html("span", klass="section__number"):
                     text(tag._number.value + ". ")
             text(self.format(tag))
+        ret = doc.getvalue()
+        if tag.next() and isinstance(tag.next(), str):
+            ret += "<p>"
         return doc.getvalue()
 
 
-    def handle_eq(self, tag):
+    def handle_eq(self, tag: QqTag) -> str:
         """
-        Uses tags: eq
-
         :param tag:
         :return:
         """
@@ -273,7 +280,7 @@ class QqHTMLFormatter(object):
             text("\\]\n")
         return doc.getvalue()
 
-    def handle_equation(self, tag):
+    def handle_equation(self, tag: QqTag) -> str:
         """
         Uses tags: equation, number, label
 
@@ -293,10 +300,8 @@ class QqHTMLFormatter(object):
             text("\\]\n")
         return doc.getvalue()
 
-    def handle_ref(self, tag):
+    def handle_ref(self, tag: QqTag):
         """
-        Uses tags: ref
-
         :param tag:
         :return:
         """
@@ -320,7 +325,7 @@ class QqHTMLFormatter(object):
                     text(number)
         return doc.getvalue()
 
-    def handle_eqref(self, tag):
+    def handle_eqref(self, tag: QqTag) -> str:
         """
         Alias to handle_ref
 
@@ -351,13 +356,13 @@ class QqHTMLFormatter(object):
                 text(join_nonempty(env_localname, number) + ".")
 
             doc.asis(" "+self.format(tag, markdown = True))
-        return "<p>"+doc.getvalue()+"\n<p>"
+        return "<p>"+doc.getvalue()+"</p>\n<p>"
 
-    def handle_proof(self, tag: QqTag):
+    def handle_proof(self, tag: QqTag) -> str:
         """
         Uses tags: proof, label, outline, of
         :param tag:
-        :return:
+        :return: HTML of proof
         """
         doc, html, text = Doc().tagtext()
         with html("div", klass="env env__proof"):
@@ -376,8 +381,6 @@ class QqHTMLFormatter(object):
 
     def handle_paragraph(self, tag: QqTag):
         """
-        Uses tags: paragraph
-
         :param tag:
         :return:
         """
@@ -386,7 +389,7 @@ class QqHTMLFormatter(object):
             doc.asis(self.format(tag, markdown = True)+".")
         return "<p>" + doc.getvalue()+" "
 
-    def handle_figure(self, tag: QqTag):
+    def handle_figure(self, tag: QqTag) -> str:
         """
         Currently, only python-generated figures are supported.
 
@@ -401,7 +404,7 @@ class QqHTMLFormatter(object):
         Uses tags: figure, label, pythonfigure, caption, number
 
         :param tag: QqTag
-        :return:
+        :return: HTML of figure
         """
         doc, html, text = Doc().tagtext()
         with html("div", klass="figure"):
@@ -417,6 +420,20 @@ class QqHTMLFormatter(object):
                         text(join_nonempty(self.localize("Fig."), tag.get("number"))+": ")
                         doc.asis(self.format(child, markdown=True))
         return doc.getvalue()
+
+    def handle_snippet(self, tag: QqTag) -> str:
+        """
+        :param tag:
+        :return:
+        """
+        return self.format(tag, markdown=True)
+
+    def handle_hide(self, tag: QqTag) -> str:
+        """
+        :param tag:
+        :return:
+        """
+        return ""
 
     def preprocess(self, root: QqTag):
         """
@@ -444,22 +461,16 @@ class QqHTMLFormatter(object):
 
 
     def mk_chapters(self):
-        curchapter = {'header': QqTag("_zero_chapter"), 'content': []}
+        curchapter = Chapter(QqTag("_zero_chapter"),  [])
         self.chapters = []
         for tag in self.root:
             if isinstance(tag, QqTag) and tag.name == 'h1':
                 self.add_chapter(curchapter)
-                curchapter = {'header': tag, 'content': []}
-            curchapter['content'].append(tag)
+                curchapter = Chapter(tag, [])
+            curchapter.content.append(tag)
         self.add_chapter(curchapter)
 
-
-
-
-
-
-
-    def tag2chapter(self, tag):
+    def tag2chapter(self, tag) -> int:
         """
         Returns the number of chapter to which tag belongs.
 
@@ -468,23 +479,26 @@ class QqHTMLFormatter(object):
         :param tag:
         :return:
         """
+
         granny = tag.get_granny()
         headers = self.root("h1")
+        i = 0
         for i, header in enumerate(headers, 1):
             if granny.my_index < header.my_index:
                 return i - 1
         return i
 
-    def url_for_chapter(self, index = None, label = None):
+    def url_for_chapter(self, index=None, label=None) -> str:
         assert index is not None or label is not None
         if index:
-            return "/chapter/index/"+urllib.parse.quote(str(index))
-        else:
-            return "/chapter/label/"+urllib.parse.quote(str(label))
+            label = self.chapters[index].header.find("label")
+            if not label:
+                return "/chapter/index/" + urllib.parse.quote(str(index))
+        return "/chapter/label/" + urllib.parse.quote(label.value.strip())
 
     def add_chapter(self, chapter):
-        if chapter['header'].find("label"):
-            self.label2chapter[chapter['header']._label.value] = len(self.chapters)
+        if chapter.header.find("label"):
+            self.label2chapter[chapter.header._label.value] = len(self.chapters)
         self.chapters.append(chapter)
 
 
@@ -492,13 +506,13 @@ class QqHTMLFormatter(object):
         self.preprocess(self.root)
         return self.format(self.root, markdown=True)
 
-    def h_id(self, tag):
+    def h_id(self, tag) -> str:
         """
         Returns id of h:
         - If it has label, it is label-based
         - If it does not have label, but have number (which is true after preprocess for all h's), it is number-based
         :param tag:
-        :return:
+        :return: str id
         """
         if tag.find("label"):
             return self.label2id(tag._label.value)
@@ -507,9 +521,21 @@ class QqHTMLFormatter(object):
         else:
             return ""
 
-    def mk_toc(self, maxlevel=2, targetpage=""):
+    def mk_toc(self, maxlevel=2, chapter = None) -> str:
+        """
+        Makes TOC (Table Of Contents)
+
+        :param maxlevel: maximum heading level to include to TOC (default: 2)
+        :param chapter: if None, we assume to have whole document on the same page and TOC contains only local links.
+        If present, it is equal to index of current chapter
+        :return: str with HTML content of TOC
+        """
         doc, html, text = Doc().tagtext()
         curlevel = 1
+
+        curchapter = 0
+        # chapter before first h1 has index 0
+
         with html("ul", klass="nav"):
             for child in self.root:
                 chunk = []
@@ -517,6 +543,11 @@ class QqHTMLFormatter(object):
                     m = re.match(r'h(\d)', child.name)
                     if m:
                         hlevel = int(m.group(1))
+
+                        # h1 header marks new chapter, so increase curchapter counter
+                        if hlevel == 1:
+                            curchapter += 1
+
                         if hlevel > maxlevel:
                             continue
                         while hlevel > curlevel:
@@ -525,6 +556,11 @@ class QqHTMLFormatter(object):
                         while hlevel < curlevel:
                             chunk.append("</ul></li>\n")
                             curlevel -= 1
+
+                        targetpage = ""
+                        if chapter is not None and curchapter != chapter:
+                            targetpage = self.url_for_chapter(index=curchapter)
+
                         item_doc, item_html, item_text = Doc().tagtext()
                         with item_html("li", klass = "toc_item toc_item_level_%i" % curlevel):
                             with item_html("a", href=targetpage+"#"+self.h_id(child)):
@@ -532,6 +568,7 @@ class QqHTMLFormatter(object):
                         chunk.append(item_doc.getvalue())
                         doc.asis("".join(chunk))
         return doc.getvalue()
+
 
 
 
