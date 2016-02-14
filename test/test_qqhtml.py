@@ -2,9 +2,29 @@
 # Available under MIT license (see LICENSE file in the root folder)
 
 import unittest
-from qqmbr.qqdoc import QqParser, QqTag
+from qqmbr.ml import QqParser, QqTag
 from qqmbr.qqhtml import QqHTMLFormatter
 from bs4 import BeautifulSoup
+import os
+import contextlib
+
+
+# FROM: http://code.activestate.com/recipes/576620-changedirectory-context-manager/
+# BY: Greg Warner
+
+@contextlib.contextmanager
+def working_directory(path):
+    """A context manager which changes the working directory to the given
+    path, and then changes it back to its previous value on exit.
+
+    """
+    prev_cwd = os.getcwd()
+    os.chdir(path)
+    try:
+        yield
+    finally:
+        os.chdir(prev_cwd)
+# END FROM
 
 
 class TestQqHtmlMethods(unittest.TestCase):
@@ -51,17 +71,44 @@ See \ref{eq:x2y2}.
 """
         tree = parser.parse(doc)
         html = QqHTMLFormatter(tree)
+        html.counters['equation'].showparents = False
         s = html.do_format()
         soup = BeautifulSoup(s, 'html.parser')
         self.assertEqual(soup.div.attrs, {'id':"label_eq_x2y2",'class':["latex_equation"]})
         self.assertEqual(soup.span['class'], ['ref'])
         self.assertEqual(soup.a['class'], ['a-ref'])
-        self.assertEqual(soup.a['href'], '#label_eq_x2y2')
+        self.assertEqual(soup.a['href'], '#mjx-eqn-1')
         self.assertEqual(soup.a.string, "(1)")
 
+    def test_parse_html_math_align(self):
+
+        html = QqHTMLFormatter()
+        parser = QqParser(allowed_tags=html.uses_tags())
+
+        doc = r"""\align
+    \item c^2 &= a^2 + b^2 \label eq:one
+    \item c &= \sqrt{a^2 + b^2} \label eq:two
+
+
+See \ref{eq:one} and \ref{eq:two}
+"""
+        tree = parser.parse(doc)
+        html.root = tree
+        html.counters['equation'].showparents = False
+        with working_directory("../qqmbr"):
+            s = html.do_format()
+        soup = BeautifulSoup(s, 'html.parser')
+        self.assertEqual(soup.text, "\\[\n\\begin{align}\n\nc^2 &= a^2 + b^2 \n\\tag{1}\n\\\\\n"
+                                    "c &= \\sqrt{a^2 + b^2} \n\\tag{2}\n\\\\\n\\end{align}\n\\]\nSee (1) and (2)")
+        self.assertEqual(soup.a['href'], "#mjx-eqn-1")
+        self.assertEqual(soup.a.string, "(1)")
+        self.assertEqual(soup("a")[1]['href'], "#mjx-eqn-2")
+        self.assertEqual(soup("a")[1].string, "(2)")
+
     def test_tag2chapter(self):
-        parser = QqParser(allowed_tags={'h1', 'h2', 'h3', 'h4', 'eq', 'eqref', 'ref',
-                                        'equation', 'label', 'idx', 'remark', 'author'})
+        html = QqHTMLFormatter()
+        parser = QqParser(allowed_tags=html.uses_tags())
+        parser.allowed_tags.add('author')
         doc = r"""\author Ilya V. Schurov
 \h1 Chapter 1
 This is the first chapter
@@ -76,7 +123,7 @@ Hello
     This is the end. \ref{eq1}
 """
         tree = parser.parse(doc)
-        html = QqHTMLFormatter(tree)
+        html.root = tree
         self.assertEqual(html.tag2chapter(tree._author), 0)
         self.assertEqual(html.tag2chapter(tree._equation), 1)
         self.assertEqual(html.tag2chapter(tree._equation._label), 1)
@@ -94,7 +141,6 @@ See \ref[section|sec:first] for details.
         tree = parser.parse(doc)
         formatter.root = tree
         html = formatter.do_format()
-        print(html)
         soup = BeautifulSoup(html, "html.parser")
         self.assertEqual(soup.a['href'], "#label_sec_first")
         self.assertEqual(soup.a.string, "section 1")

@@ -1,0 +1,21 @@
+<div class="quiz">
+%for i, choice in enumerate(tag("choice"), 1):
+<a class="glyphicon glyphicon-pencil showdetails" data-toggle="collapse"
+ data-target="#quiz_id_${tag._md5id.value}_${i}" style="font-size: 80%;"></a>
+&nbsp; ${formatter.format(choice)}
+<div class="collapse-group">
+    <p>
+        <div class="collapse" id="quiz_id_${tag._md5id.value}_${i}">
+        %if choice.exists('correct'):
+            <img src="https://cdn.rawgit.com/hplgit/doconce/master/bundled/html_images/correct.gif">
+        %else:
+            <img src="https://cdn.rawgit.com/hplgit/doconce/master/bundled/html_images/incorrect.gif">
+        %endif
+        %if choice.exists('comment'):
+            ${formatter.format(choice._comment)}
+        %endif
+        </div>
+    </p>
+</div>
+%endfor
+</div>

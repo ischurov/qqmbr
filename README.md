@@ -23,7 +23,7 @@ You can look at my Lecture Notes on ODE sources (see e.g. [this qqDoc source](ht
 [its HTML render](http://math-info.hse.ru/f/2015-16/nes-ode/chapter03.html), in Russian) or at the [code sample](#code-sample) below.
 
 ### Inspiration
-**qqmbr** and **qqDoc** were inspired by various projects and conceptions:
+**qqmbr**, **qqDoc** and **MLQQ** were inspired by various projects and conceptions:
 
 - [TeX](https://tug.org/) and [LaTeX](https://www.latex-project.org/) for math and backslashes.
 - [Python](https://www.python.org/) for the importance of indents (and **qqmbr** is written in Python!);
@@ -32,7 +32,7 @@ You can look at my Lecture Notes on ODE sources (see e.g. [this qqDoc source](ht
 - [S-expressions](https://en.wikipedia.org/wiki/S-expression) for simplicity (why they have attributes in XML?).
 
 ### Current status
-Currently, we have full-featured **qqDoc** parser and basic *qqHTML* formatter. The following features are on the to-do list:
+Currently, we have full-featured **MLQQ** parser and basic *qqHTML* formatter. The following features are on the to-do list:
 
 - setuptools install and PyPI distribution.
 - *qqLaTeX* formatter.
@@ -47,7 +47,7 @@ You are welcome to participate with pull requests and issue-reporting.
 
 ### Code sample
 
-This is an example of **qqmbr** markup (subset of **qqDoc** markup).
+This is an example of **qqDoc** markup (subset of **MLQQ** markup).
 
     \h1 Intro to qqmbr
     
@@ -105,24 +105,24 @@ This is an example of **qqmbr** markup (subset of **qqDoc** markup).
                 \comment And so do I!
 
 
-### qqDoc Syntax
-**qqDoc** is a general-purpose markup (or *metalanguage*, like XML), while **qqmbr** is a subset of **qqDoc** markup (or **qqDoc**-based markup language) 
-used to produce documents in HTML and LaTeX.
+### Markup
+**MLQQ** is a general-purpose markup (or *metalanguage*, like XML), while **qqDoc** is a subset of **MLQQ** markup 
+(or **MLQQ**-based markup language) used to produce documents in HTML and LaTeX with **qqmbr**.
 
-Internal representation of **qqDoc** is an [s-expression](https://en.wikipedia.org/wiki/S-expression)-like tree structure. 
+Internal representation of **MLQQ** is an [s-expression](https://en.wikipedia.org/wiki/S-expression)-like tree structure. 
 It can be also represented as attribute-free XML.
 
-The following rules describe complete **qqDoc** syntax:
+The following rules describe complete **MLQQ** syntax:
 
 #### Special characters
-The following characters have special meaning in **qqDoc**:
+The following characters have special meaning in **MLQQ**:
 
 1. **Tag beginning character.** This character is used to mark the beginning of any tag. By default, it is backslash `\` 
 (like in LaTeX), but can be configured to any other character. If you need to enter this character literally, you have 
 to escape it with the same character (like `\\`). You can also escape other special characters listed below with *tag beginning character*.
 2. **Separator character** is used to separate the rest of line which contains *block tag* (see below). By default it is pipe `|`.
 3. Opening and closing brackets: `{`, `}`, and `[`, `]`, used to indicate the content that belongs to *inline tags*, see below.
-4. Tabs are forbidden at the beginning of the line in **qqDoc** (just like in YAML).
+4. Tabs are forbidden at the beginning of the line in **MLQQ** (just like in YAML).
 
 #### Block tags
 Block tags are typed at the beginning of the line, after several spaces that mark *indent* of a tag.  

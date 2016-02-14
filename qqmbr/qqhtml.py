@@ -1,7 +1,7 @@
 # (c) Ilya V. Schurov, 2016
 # Available under MIT license (see LICENSE file in the root folder)
 
-from qqmbr.qqdoc import QqTag
+from qqmbr.ml import QqTag
 from yattag import Doc
 from collections import namedtuple
 import mistune
@@ -10,6 +10,7 @@ import inspect
 import hashlib
 import os
 import urllib.parse
+from mako.template import Template
 
 import matplotlib
 matplotlib.use('Agg')
@@ -48,24 +49,25 @@ class Counter():
 
     def __init__(self, showparents=False):
         self.value = 0
-        self.child = None
+        self.children = []
         self.parent = None
         self.showparents = showparents
 
     def reset(self):
         self.value = 0
-        if self.child:
-            self.child.reset()
+        for child in self.children:
+            child.reset()
 
     def increase(self):
         self.value += 1
-        if self.child:
-            self.child.reset()
+        for child in self.children:
+            child.reset()
 
     def spawn_child(self):
-        self.child = Counter()
-        self.child.parent = self
-        return self.child
+        newcounter = Counter()
+        newcounter.parent = self
+        self.children.append(newcounter)
+        return newcounter
 
     def __str__(self):
         my_str = str(self.value)
@@ -102,10 +104,12 @@ class QqHTMLFormatter(object):
         self.counters['h4'] = self.counters['h3'].spawn_child()
 
         self.counters['equation'] = self.counters['h1'].spawn_child()
+        self.counters['equation'].showparents = True
+        self.counters['item'] = {'align': self.counters['equation']}
         self.counters['figure'] = self.counters['h1'].spawn_child()
 
         self.enumerateable_envs = {name: name.capitalize() for name in ['remark', 'theorem', 'example', 'exercise',
-                                                                     'definition', 'proposition', 'lemma']}
+                                                                     'definition', 'proposition', 'lemma', 'question']}
 
         # You can make self.localnames = {} to use plain English localization
 
@@ -120,15 +124,14 @@ class QqHTMLFormatter(object):
             'Proof': 'Доказательство',
             'Proof outline': 'Набросок доказательства',
             'Figure': 'Рисунок',
-            'Fig.': "Рис."
+            'Fig.': "Рис.",
+            'Question': 'Вопрос'
         }
 
-        self.formulaenvs = {'eq', 'equation'}
-
-        enum_envs_counter = self.counters['h1'].spawn_child()
+        self.formulaenvs = {'eq', 'equation', 'align'}
 
         for env in self.enumerateable_envs:
-            self.counters[env] = enum_envs_counter
+            self.counters[env] = self.counters['h1'].spawn_child()
 
         mistune_renderer = mistune.Renderer(escape=False)
         self.markdown = mistune.Markdown(renderer=mistune_renderer)
@@ -142,8 +145,6 @@ class QqHTMLFormatter(object):
         plt.rcParams['figure.figsize'] = (6, 4)
 
         self.pythonfigure_globals = {'plt': plt}
-
-
 
     def make_python_fig(self, code: str, exts=('pdf', 'svg'), tight_layout=True):
         if isinstance(exts, str):
@@ -161,13 +162,13 @@ class QqHTMLFormatter(object):
             make_sure_path_exists(path)
             loc = {}
             gl = self.pythonfigure_globals
+            plt.cla()
             exec(code, gl, loc)
             if tight_layout:
                 plt.tight_layout()
             for ext in exts:
                 plt.savefig(os.path.join(path, self.default_figname + "." + ext))
         return os.path.join(prefix, hashsum)
-
 
     def uses_tags(self):
         members = inspect.getmembers(self, predicate=inspect.ismethod)
@@ -225,7 +226,7 @@ class QqHTMLFormatter(object):
     def label2id(self, label):
         return "label_" + mk_safe_css_ident(label.strip())
 
-    def format(self, content, markdown = False) -> str:
+    def format(self, content, markdown = True) -> str:
         """
 
         :param content: could be QqTag or any iterable of QqTags
@@ -252,6 +253,12 @@ class QqHTMLFormatter(object):
         """
         Uses tags: h1, h2, h3, h4, label, number
 
+        Example:
+
+            \h1 This is first header
+
+            \h2 This is the second header \label{sec:second}
+
         :param tag:
         :return:
         """
@@ -270,19 +277,31 @@ class QqHTMLFormatter(object):
 
     def handle_eq(self, tag: QqTag) -> str:
         """
+        eq tag corresponds to \[ \] or $$ $$ display formula without number.
+
+        Example:
+
+        \eq
+            x^2 + y^2 = z^2
+
         :param tag:
         :return:
         """
         doc, html, text = Doc().tagtext()
         with html("div", klass="latex_eq"):
             text("\\[\n")
-            text(self.format(tag))
+            text(self.format(tag, markdown=False))
             text("\\]\n")
         return doc.getvalue()
 
     def handle_equation(self, tag: QqTag) -> str:
         """
         Uses tags: equation, number, label
+
+        Example:
+
+        \equation \label eq:first
+            x^2 + y^2 = z^2
 
         :param tag:
         :return:
@@ -295,13 +314,51 @@ class QqHTMLFormatter(object):
                 text("\\tag{{{}}}\n".format(tag._number.value))
             if tag.find('label'):
                 doc.attr(id=self.label2id(tag._label.value))
-            text(self.format(tag))
+            text(self.format(tag, markdown=False))
             text("\\end{equation}\n")
             text("\\]\n")
         return doc.getvalue()
 
+    def handle_align(self, tag: QqTag) -> str:
+        """
+        Uses tags: align, number, label, item
+
+        Example:
+            \align
+                \item c^2 &= a^2 + b^2 \label eq:one
+                \item c &= \sqrt{a^2 + b^2} \label eq:two
+
+        :param tag:
+        :return:
+        """
+        template = Template(filename="templates/math_align.html")
+        return template.render(formatter=self, tag=tag)
+
+
     def handle_ref(self, tag: QqTag):
         """
+        Examples:
+
+            See Theorem \ref{thm:existence}
+
+        Other way:
+
+            See \ref[Theorem|thm:existence]
+
+        In this case word ``Theorem'' will be part of a reference: e.g. in HTML it will look like
+
+            See <a href="#label_thm:existence">Theorem 1</a>
+
+        If you want to omit number, just use \nonumber tag like so:
+
+            See \ref[Theorem\nonumber|thm:existence]
+
+        This will produce HTML like
+            See <a href="#label_thm:existence">Theorem</a>
+
+
+        Uses tags: ref, nonumber
+
         :param tag:
         :return:
         """
@@ -319,18 +376,55 @@ class QqHTMLFormatter(object):
         if self.mode == 'bychapters':
             href = self.url_for_chapter(self.tag2chapter(target), fromindex=self.tag2chapter(tag))
 
-        href += "#"+self.label2id(label)
+        eqref = target.name in self.formulaenvs or target.name == 'item' and target.parent.name in self.formulaenvs
+
+        if eqref:
+            href += "#mjx-eqn-" + str(number)
+        else:
+            href += "#"+self.label2id(label)
 
         with html("span", klass="ref"):
             with html("a", klass="a-ref", href=href,
                       title=self.label2title.get(label, "")):
                 if prefix:
-                    doc.asis(self.format(prefix, markdown=True) + " ")
-                if self.label2tag.get(label) and self.label2tag[label].name in self.formulaenvs:
-                    text("(" + number + ")")
-                else:
-                    text(number)
+                    doc.asis(self.format(prefix, markdown=True))
+                if not tag.exists("nonumber"):
+                    if prefix:
+                        doc.asis(" ")
+                    if eqref:
+                        text("(" + number + ")")
+                    else:
+                        text(number)
         return doc.getvalue()
+
+    def handle_snref(self, tag: QqTag) -> str:
+        """
+        Makes snippet ref.
+
+        Example:
+
+            Consider \snref[Initial Value Problem|sn:IVP].
+
+        :param tag:
+        :return:
+        """
+        doc, html, text = Doc().tagtext()
+        title, labelfield = tag.split_by_sep()
+        label = "".join(labelfield)
+        data_url = self.url_for_snippet(label)
+        with html("a", ('data-url', data_url), klass="snippet-ref"):
+            doc.asis(self.format(title), markdown=True)
+
+    def url_for_snippet(self, label):
+        """
+        Returns url for snippet by label.
+
+        Override this method to use Flask's url_for
+
+        :param label:
+        :return:
+        """
+        return "/snippet/"+label
 
     def handle_eqref(self, tag: QqTag) -> str:
         """
@@ -368,6 +462,15 @@ class QqHTMLFormatter(object):
     def handle_proof(self, tag: QqTag) -> str:
         """
         Uses tags: proof, label, outline, of
+
+        Examples:
+
+            \proof
+                Here is the proof
+
+            \proof \of theorem \ref{thm:1}
+                Now we pass to proof of theorem \ref{thm:1}
+
         :param tag:
         :return: HTML of proof
         """
@@ -383,7 +486,7 @@ class QqHTMLFormatter(object):
                 doc.asis(join_nonempty(self.localize(proofline),
                                        self.format(tag.find("of")))+".")
             doc.asis(" "+self.format(tag, markdown = True))
-            doc.asis("&#8718;")
+            doc.asis("<span class='end-of-proof'>&#8718;</span>")
         return doc.getvalue()+"\n<p>"
 
     def handle_paragraph(self, tag: QqTag):
@@ -393,14 +496,14 @@ class QqHTMLFormatter(object):
         """
         doc, html, text = Doc().tagtext()
         with html("span", klass="paragraph"):
-            doc.asis(self.format(tag, markdown = True)+".")
+            doc.asis(self.format(tag, markdown = True).strip()+".")
         return "<p>" + doc.getvalue()+" "
 
     def handle_figure(self, tag: QqTag) -> str:
         """
         Currently, only python-generated figures are supported.
 
-        Synopsis:
+        Example:
 
         \figure \label fig:figure
             \pythonfigure
@@ -418,14 +521,16 @@ class QqHTMLFormatter(object):
             if tag.find("label"):
                 doc.attr(id=self.label2id(tag._label.value))
             for child in tag:
-                if child.name == 'pythonfigure':
-                    path = self.make_python_fig(child.text_content, exts=("svg"))
-                    with html("img", klass="figure", src=self.figures_prefix + path + "/" + self.default_figname + ".svg"):
-                        pass
-                elif child.name == 'caption':
-                    with html("div", klass="figure_caption"):
-                        text(join_nonempty(self.localize("Fig."), tag.get("number"))+": ")
-                        doc.asis(self.format(child, markdown=True))
+                if isinstance(child, QqTag):
+                    if child.name == 'pythonfigure':
+                        path = self.make_python_fig(child.text_content, exts=("svg"))
+                        with html("img", klass="figure img-responsive",
+                                  src=self.figures_prefix + path + "/" + self.default_figname + ".svg"):
+                            pass
+                    elif child.name == 'caption':
+                        with html("div", klass="figure_caption"):
+                            text(join_nonempty(self.localize("Fig."), tag.get("number"))+": ")
+                            doc.asis(self.format(child, markdown=True))
         return doc.getvalue()
 
     def handle_snippet(self, tag: QqTag) -> str:
@@ -442,6 +547,21 @@ class QqHTMLFormatter(object):
         """
         return ""
 
+    def get_counter_for_tag(self, tag: QqTag) -> Counter:
+        name = tag.name
+        counters = self.counters
+        while True:
+            current = counters.get(name)
+            if current is None:
+                return None
+            if isinstance(current, Counter):
+                return current
+            if isinstance(current, dict):
+                counters = current
+                name = tag.parent.name
+                continue
+            return None
+
     def preprocess(self, root: QqTag):
         """
         Uses tags: number, label, nonumber
@@ -453,7 +573,7 @@ class QqHTMLFormatter(object):
                 name = tag.name
                 if (name in self.counters or name in self.enumerateable_envs) and not (tag.find('number') or
                                                                                            tag.exists('nonumber')):
-                    counter = self.counters[name]
+                    counter = self.get_counter_for_tag(tag)
                     counter.increase()
                     tag.append_child(QqTag({'number': str(counter)}))
                     if tag.find('label'):
@@ -500,6 +620,8 @@ class QqHTMLFormatter(object):
         Returns url for chapter. Either index or label of the target chapter have to be provided.
         Optionally, fromindex can be provided. In this case function will return empty string if
         target chapter coincides with current one.
+
+        You can inherit from QqHTMLFormatter and override this method too use e.g. Flask's url_for.
         """
         assert index is not None or label is not None
         if index is None:
@@ -583,7 +705,34 @@ class QqHTMLFormatter(object):
                         doc.asis("".join(chunk))
         return doc.getvalue()
 
+    def tag_id(self, tag):
+        """
+        Returns autogenerated tag id based on tag's contents.
+        It's first 5 characters of MD5-hashsum of tag's content
+        :return:
+        """
+        return hashlib.md5(repr(tag.as_list()).encode('utf-8')).hexdigest()[:5]
 
+    def handle_quiz(self, tag: QqTag):
+        """
+        Uses tags: choice, correct, comment
 
+        Example:
 
+        \question
+        Do you like qqmbr?
+        \quiz
+            \choice
+                No.
+                \comment You didn't even try!
+            \choice \correct
+                Yes, i like it very much!
+                \comment And so do I!
 
+        :param tag:
+        :return:
+        """
+        if not tag.exists('md5id'):
+            tag.append_child(QqTag('md5id', [self.tag_id(tag)]))
+        template = Template(filename="templates/quiz.html")
+        return template.render(formatter=self, tag=tag)

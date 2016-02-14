@@ -3,7 +3,7 @@
 
 import unittest
 from qqmbr.indexedlist import IndexedList
-from qqmbr.qqdoc import QqTag, QqParser
+from qqmbr.ml import QqTag, QqParser
 
 
 class TestQqTagMethods(unittest.TestCase):

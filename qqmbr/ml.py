@@ -4,6 +4,7 @@
 from collections import Sequence, MutableSequence
 from qqmbr.indexedlist import IndexedList
 import re
+import os
 
 
 class QqError(Exception):
@@ -88,7 +89,7 @@ class QqTag(MutableSequence):
     def __getattr__(self, attr):
         if attr[0] == "_":
             return self.find(attr[1:])
-        raise AttributeError()
+        raise AttributeError("Attribute " + attr + " not found")
 
     def find(self, key):
         """
@@ -238,9 +239,12 @@ class StackElement(object):
 
 
 class QqParser(object):
+    """
+    General MLQQ parser.
+    """
     def __init__(self, tb_char='\\', sep_char="|",
                  allowed_tags=None, tag_regex=r"([^\s\{\[\|\&]+)", allowed_inline_tags=None, alias2tag=None,
-                 separator='separator'):
+                 separator='separator', include='include', include_dir = ''):
         self.tb_char = tb_char
         self.command_regex = re.escape(self.tb_char)
         if allowed_tags is None:
@@ -264,6 +268,9 @@ class QqParser(object):
         self.separator = separator
         self.separator_tag = self.tb_char + separator
         self.allowed_tags.add(separator)
+        self.include = include
+        self.allowed_tags.add(include)
+        self.include_dir = include_dir
 
     def pop_stack(self):
         self._last_tag = self._stack.pop()
@@ -331,7 +338,7 @@ class QqParser(object):
         :param line:
         :return:
         """
-        sep =   self.command_regex + "(" + self.tag_regex + r")|" + self.sep_regex
+        sep = self.command_regex + "(" + self.tag_regex + r"(?!{))|" + self.sep_regex
         seps = re.finditer(sep, line)
         cursor = 0
         chunk = []
@@ -374,6 +381,9 @@ class QqParser(object):
         chunknumbers = []
 
         while lines:
+
+            skip = False
+
             line = self.escape_line(lines.pop())
             i = numbers.pop()
 
@@ -425,6 +435,19 @@ class QqParser(object):
                     if tag in self.allowed_tags:
                         if stack[-1].indent is None:
                             raise QqError("New block tag open during inline mode on line %i: %s", (i, lin))
+
+                        # process include tag
+                        if tag == self.include:
+                            filename = os.path.join(self.include_dir, lin[m.end():].strip())
+                            with open(filename) as f:
+                                includelines = f.readlines()
+                            if includelines:
+                                includeindent = self.get_indent(includelines[0])
+                                for includeline in reversed(includelines):
+                                    lines.append(" "*(current_indent-includeindent) + includeline)
+                                    numbers.append(i)
+                            skip = True
+                            continue
 
                         new_tag = QqTag(tag, [])
 
@@ -531,7 +554,7 @@ class QqParser(object):
                                     current_indent += 4
                                     chunk = []
 
-                                    cursor = None
+                                    skip = True
                                     # this is done to skip the rest of line at the end of while
 
                                     continue
@@ -539,7 +562,7 @@ class QqParser(object):
                                     self.pop_stack()
                                     current_tag = stack[-1].tag
                                     chunk = []
-                                    cursor = None
+                                    skip = True
                                     continue
 
                 inline_tag = m.group('tag')
@@ -562,10 +585,9 @@ class QqParser(object):
                     else:
                         if stack[-1].indent is None and m.group('bracket') == stack[-1].bracket:
                             # Process case of non-allowed tag with bracket for correct brackets counting
-                            # TODO: write test case for this case
                             stack[-1].bracket_counter += 1
 
-            if cursor is not None:
+            if not skip:
                 # cursor is None if special inline tag is closed and nothing has to be done here
                 # Append the rest of line to current tag
                 chunk.append(line[cursor:])
