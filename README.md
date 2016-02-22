@@ -8,11 +8,8 @@ One source, multiple media: HTML, XML, LaTeX, PDF, eBooks, any other. Look below
 ### Highlights
 **qqmbr** is based on **qqDoc** markup. It has the following features:
 
-- Clean syntax. On micro-level, we use well-known [Markdown syntax](https://daringfireball.net/projects/markdown/).
-So all that **bolds** and _italics_ stuff is familiar. Formula formatting is LaTeX (handled by [MathJax](http://mathjax.org/) in HTML).
-On macro-level we have tags. They are auto-closing: just unindent the line (like in Python). 
-And also we have so-called inline tags, e.g. for ref's (again very LaTeX-like: `\eqref{eq:main}`). 
-That's almost all: see *complete* [qqDoc syntax description](#qqdoc-syntax) below for details.
+- Clean syntax. It's a mixture of Python indent-based blocks and LaTeX-style commands beginning with backslash. 
+See *complete* [qqDoc syntax description](#markup) below for details.
 - Extensibility. Tags can be anything. LaTeX-style environments like *Theorem 1* or *Lemma 2* or *Definition 3*.
 Figures with captions. Some complicated data that can be used to render something interactive. Everything is a tag.
 - Simple parsing. The source is parsed into a kind of [s-expression](https://en.wikipedia.org/wiki/S-expression) 
@@ -32,14 +29,18 @@ You can look at my Lecture Notes on ODE sources (see e.g. [this qqDoc source](ht
 - [S-expressions](https://en.wikipedia.org/wiki/S-expression) for simplicity (why they have attributes in XML?).
 
 ### Current status
-Currently, we have full-featured **MLQQ** parser and basic *qqHTML* formatter. The following features are on the to-do list:
+Currently, we have full-featured **MLQQ** parser and basic *qqHTML* formatter. Some highlights:
+
+- snippets and glossary (like [here](http://math-info.hse.ru/odebook/._thebook002.html) (hover on «задача Коши» link).
+- math environments: `equation`, `align`.
+- quizzes, like in DocOnce (see e.g. [here](http://math-info.hse.ru/odebook/._thebook001.html), look for «Контрольный вопрос»);
+
+The following features are on the to-do list:
 
 - setuptools install and PyPI distribution.
 - *qqLaTeX* formatter.
 - more features in *qqHTML*:
-    - snippets and glossary (like [here](http://math-info.hse.ru/odebook/._thebook002.html) (hover on «задача Коши» link).
-    - more math environments (`gather`, `align` and so on);
-    - quizzes, like in DocOnce (see e.g. [here](http://math-info.hse.ru/odebook/._thebook001.html), look for «Контрольный вопрос»);
+    - more math environments (`gather`, `multline` and so on);
     - admonitions (boxes for warning, notice, question, etc.), like in DocOnce;
     - many others.
 
@@ -97,10 +98,10 @@ This is an example of **qqDoc** markup (subset of **MLQQ** markup).
     \question
         Do you like qqmbr?
         \quiz
-            \choice \correct false
+            \choice
                 No.
                 \comment You didn't even try!
-            \choice \correct true
+            \choice \correct
                 Yes, i like it very much!
                 \comment And so do I!
 

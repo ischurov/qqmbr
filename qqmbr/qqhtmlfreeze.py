@@ -1,0 +1,9 @@
+from flask_frozen import Freezer
+from qqmbr.qqhtmlpreview import app
+
+app.config['mathjax_node'] = True
+
+freezer = Freezer(app)
+app.config['FREEZER_BASE_URL'] = 'http://math-info.hse.ru/odebook/'
+if __name__ == '__main__':
+    freezer.freeze()

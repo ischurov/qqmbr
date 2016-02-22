@@ -134,7 +134,11 @@ def center_spines(ax=None, centerx=0, centery=0):
     # Add offset ticklabels at <centerx, centery> using annotation
     # (Should probably make these update when the plot is redrawn...)
     xlabel, ylabel = map(formatter.format_data, [centerx, centery])
-    ax.annotate('(%s, %s)' % (xlabel, ylabel), (centerx, centery),
+    if centerx != 0 or centery != 0:
+        annotation = '(%s, %s)' % (xlabel, ylabel)
+    else:
+        annotation = xlabel
+    ax.annotate(annotation, (centerx, centery),
             xytext=(-4, -4), textcoords='offset points',
             ha='right', va='top')
  

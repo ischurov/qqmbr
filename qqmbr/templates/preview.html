@@ -25,8 +25,9 @@ Available under BSD 3-Clause License, see https://github.com/hplgit/doconce/blob
         div.figure {
             text-align: center;
             border-bottom: #cccccc 1px solid;
-            /* border-top: #cccccc 1px solid; */
+            border-top: #cccccc 1px solid;
             margin-bottom: 1em;
+            margin-top: 1em;
         }
         li.toc_item_level_1 {
             font-weight: bold;
@@ -111,6 +112,28 @@ div.quiz {
     span.end-of-proof {
 
         float: right;
+    }
+
+    span.section__number {
+        float: right;
+        color: #aaaaaa;
+        margin-left: 2em;
+    }
+
+    a.section__number {
+        color: #aaaaaa;
+    }
+
+    a.env-title {
+        color: black;
+    }
+
+    a.figure_caption_anchor {
+        color: black;
+    }
+
+    div.plotly-graph-div {
+        margin: auto;
     }
 </style>
 
@@ -214,6 +237,7 @@ the docs.min.css style, which makes orange math...
   });
 </script>
 <!-- JavaScript placed at the end of the document so the pages load faster -->
+{{ scripts | safe }}
 <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
 <script src="http://getbootstrap.com/dist/js/bootstrap.min.js"></script>
 <!-- NOTE: replace rawgit.com by cdn.rawgit.com for production or

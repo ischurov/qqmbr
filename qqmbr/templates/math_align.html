@@ -3,7 +3,7 @@
 <% items = tag("item") %>
 % if items:
 % for i, item in enumerate(items):
-${formatter.format(item, markdown=False)}
+${formatter.format(item, blanks_to_pars=False)}
 % if item.exists("number"):
 \tag{${item._number.value}}
 % endif

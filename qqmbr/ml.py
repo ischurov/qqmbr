@@ -185,17 +185,34 @@ class QqTag(MutableSequence):
         else:
             return default_value
 
+    def ancestor_path(self):
+        """
+        Returns list of ancestors for self.
+
+        Example:
+
+            \tag
+                \othertag
+                    \thirdtag
+
+        thirdtag.ancestor_path == [thirdtag, othertag, tag, _root]
+
+        :return:
+        """
+        tag = self
+        path = [tag]
+        while tag.parent:
+            tag = tag.parent
+            path.append(tag)
+        return path
+
     def get_granny(self):
         """
         Returns ancestor which is direct child of root
 
         :return:
         """
-        if not self.parent:
-            return None
-        if not self.parent.parent:
-            return self
-        return self.parent.get_granny()
+        return self.ancestor_path()[-2]
 
     def next(self):
         if not self.parent or self.my_index is None or self.my_index == len(self.parent) - 1:
@@ -298,8 +315,8 @@ class QqParser(object):
         s = s.replace(self.tb_char + " ", self.escape_stub + 'SPACE_&')
         s = s.replace(self.tb_char + "{", self.escape_stub + 'OPEN_CURVE_&')
         s = s.replace(self.tb_char + "[", self.escape_stub + 'OPEN_SQUARE_&')
-        s = s.replace(self.tb_char + "]", self.escape_stub + 'CLOSE_CURVE_&')
-        s = s.replace(self.tb_char + "}", self.escape_stub + 'CLOSE_SQUARE_&')
+        s = s.replace(self.tb_char + "}", self.escape_stub + 'CLOSE_CURVE_&')
+        s = s.replace(self.tb_char + "]", self.escape_stub + 'CLOSE_SQUARE_&')
 
 
         return s

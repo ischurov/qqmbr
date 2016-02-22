@@ -4,13 +4,13 @@
 from qqmbr.ml import QqTag
 from yattag import Doc
 from collections import namedtuple
-import mistune
 import re
 import inspect
 import hashlib
 import os
 import urllib.parse
 from mako.template import Template
+from fuzzywuzzy import process
 
 import matplotlib
 matplotlib.use('Agg')
@@ -47,7 +47,7 @@ class Counter():
     That's all.
     """
 
-    def __init__(self, showparents=False):
+    def __init__(self, showparents=True):
         self.value = 0
         self.children = []
         self.parent = None
@@ -79,6 +79,26 @@ def join_nonempty(*args, sep=" "):
     return sep.join(x for x in args if x)
 
 Chapter = namedtuple('Chapter', ('header', 'content'))
+plotly = None
+
+class PlotlyPlotter(object):
+    _first = True
+    def __init__(self):
+
+        self.buffer = []
+
+    def plot(self, figure_or_data):
+        self.buffer.append(
+            plotly.offline.plot(figure_or_data, show_link=False, validate=True,
+                                output_type='div', include_plotlyjs=False)
+        )
+        PlotlyPlotter._first = False
+
+    def get_data(self):
+        ret = "".join(self.buffer)
+        self.buffer.clear()
+        return ret
+
 
 class QqHTMLFormatter(object):
 
@@ -88,6 +108,7 @@ class QqHTMLFormatter(object):
         self.label2title = {}
         self.label2tag = {}
         self.label2chapter = {}
+        self.flabel2tag = {}
         self.root = root
         self.counters = {}
         self.chapters = []
@@ -132,19 +153,25 @@ class QqHTMLFormatter(object):
 
         for env in self.enumerateable_envs:
             self.counters[env] = self.counters['h1'].spawn_child()
+            self.counters[env].showparents = False
 
-        mistune_renderer = mistune.Renderer(escape=False)
-        self.markdown = mistune.Markdown(renderer=mistune_renderer)
         self.figures_dir = "fig"
-
-        self.figures_prefix = "/fig/"
-        #: prefix for urls to figures_dir
 
         self.default_figname = "fig"
 
         plt.rcParams['figure.figsize'] = (6, 4)
 
         self.pythonfigure_globals = {'plt': plt}
+        self.plotly_plotter = PlotlyPlotter()
+        self.plotly_globals = {}
+
+    def url_for_figure(self, s):
+        """
+        Override it to use flask.url_for
+        :param s:
+        :return:
+        """
+        return "/fig/" + s
 
     def make_python_fig(self, code: str, exts=('pdf', 'svg'), tight_layout=True):
         if isinstance(exts, str):
@@ -169,6 +196,16 @@ class QqHTMLFormatter(object):
             for ext in exts:
                 plt.savefig(os.path.join(path, self.default_figname + "." + ext))
         return os.path.join(prefix, hashsum)
+
+    def make_plotly_fig(self, code):
+        global plotly
+        if plotly is None:
+            import plotly
+        loc = {}
+        self.plotly_globals.update({'plot': self.plotly_plotter.plot, 'go': plotly.graph_objs, 'plotly': plotly})
+        gl = self.plotly_globals
+        exec(code, gl, loc)
+        return self.plotly_plotter.get_data()
 
     def uses_tags(self):
         members = inspect.getmembers(self, predicate=inspect.ismethod)
@@ -204,33 +241,21 @@ class QqHTMLFormatter(object):
         else:
             return ""
 
-    def safe_markdown(self, s):
-        #    print("Got line: " + s)
-        #    print("-----")
-        m = re.match(r"(\s*).*\S(\s*)", s)
-        if m:
-            pre, post = m.groups()
-        else:
-            pre = post = ""
+    def blanks_to_pars(self, s, keep_end_pars=True):
+        if not keep_end_pars:
+            s = s.rstrip()
 
-        chunk = self.markdown(s)
-        r = re.compile(r"<p>(.+)</p>$", re.DOTALL)
-        m = re.match(r, chunk)
-        if m:
-            chunk = m.group(1)
-        chunk = pre + chunk + post
-        #    print("Return line: " + chunk)
-        #    print("------")
-        return chunk
+        return re.sub(r"\n\s*\n", "\n</p>\n<p>\n", s)
+
 
     def label2id(self, label):
         return "label_" + mk_safe_css_ident(label.strip())
 
-    def format(self, content, markdown = True) -> str:
+    def format(self, content, blanks_to_pars=True, keep_end_pars=True) -> str:
         """
 
         :param content: could be QqTag or any iterable of QqTags
-        :param markdown: use markdown (True or False)
+        :param blanks_to_pars: use blanks_to_pars (True or False)
         :return: str: text of tag
         """
         if content is None:
@@ -240,9 +265,8 @@ class QqHTMLFormatter(object):
 
         for child in content:
             if isinstance(child, str):
-                if markdown:
-                    # Preserve whitespaces (markdown will remove it)
-                    out.append(self.safe_markdown(child))
+                if blanks_to_pars:
+                    out.append(self.blanks_to_pars(child, keep_end_pars))
                 else:
                     out.append(child)
             else:
@@ -264,11 +288,12 @@ class QqHTMLFormatter(object):
         """
         doc, html, text = Doc().tagtext()
         with html(tag.name):
-            doc.attr(id=self.h_id(tag))
+            doc.attr(id=self.tag_id(tag))
             if tag.find("number"):
                 with html("span", klass="section__number"):
-                    text(tag._number.value + ". ")
-            text(self.format(tag))
+                    with html("a", href="#"+self.tag_id(tag), klass="section__number"):
+                        text(tag._number.value)
+            text(self.format(tag, blanks_to_pars=False))
         ret = doc.getvalue()
         if tag.next() and isinstance(tag.next(), str):
             ret += "<p>"
@@ -290,7 +315,7 @@ class QqHTMLFormatter(object):
         doc, html, text = Doc().tagtext()
         with html("div", klass="latex_eq"):
             text("\\[\n")
-            text(self.format(tag, markdown=False))
+            text(self.format(tag, blanks_to_pars=False))
             text("\\]\n")
         return doc.getvalue()
 
@@ -314,7 +339,7 @@ class QqHTMLFormatter(object):
                 text("\\tag{{{}}}\n".format(tag._number.value))
             if tag.find('label'):
                 doc.attr(id=self.label2id(tag._label.value))
-            text(self.format(tag, markdown=False))
+            text(self.format(tag, blanks_to_pars=False))
             text("\\end{equation}\n")
             text("\\]\n")
         return doc.getvalue()
@@ -368,13 +393,18 @@ class QqHTMLFormatter(object):
             label = tag.value
         else:
             prefix, labelfield = tag.split_by_sep()
-            label = "".join(labelfield)
+            label = "".join(labelfield).strip()
 
         number = self.label2number.get(label, "???")
         target = self.label2tag[label]
         href = ""
         if self.mode == 'bychapters':
-            href = self.url_for_chapter(self.tag2chapter(target), fromindex=self.tag2chapter(tag))
+            if 'snippet' not in [t.name for t in tag.ancestor_path()]:
+                # check that we're not inside snippet now
+                fromindex = self.tag2chapter(tag)
+            else:
+                fromindex = None
+            href = self.url_for_chapter(self.tag2chapter(target), fromindex=fromindex)
 
         eqref = target.name in self.formulaenvs or target.name == 'item' and target.parent.name in self.formulaenvs
 
@@ -387,7 +417,9 @@ class QqHTMLFormatter(object):
             with html("a", klass="a-ref", href=href,
                       title=self.label2title.get(label, "")):
                 if prefix:
-                    doc.asis(self.format(prefix, markdown=True))
+                    doc.asis(self.format(prefix, blanks_to_pars=False))
+                if eqref and hasattr(self, 'url_for_eq_snippet'):
+                    doc.attr(('data-url', self.url_for_eq_snippet(number)))
                 if not tag.exists("nonumber"):
                     if prefix:
                         doc.asis(" ")
@@ -405,15 +437,34 @@ class QqHTMLFormatter(object):
 
             Consider \snref[Initial Value Problem|sn:IVP].
 
+        Here sn:IVP -- label of snippet.
+
+        If no separator present, fuzzy search will be performed over flabels
+
+        Example:
+
+        \snippet \label sn:IVP \flabel Initial Value Problem
+            Initial Value Problem is a problem with initial value
+
+        Consider \snref[initial value problem].
+
+
         :param tag:
         :return:
         """
         doc, html, text = Doc().tagtext()
-        title, labelfield = tag.split_by_sep()
-        label = "".join(labelfield)
+        if tag.exists("separator"):
+            title, labelfield = tag.split_by_sep()
+            label = "".join(labelfield)
+        else:
+            title = tag.value.replace("\n", " ")
+            target = self.find_tag_by_flabel(title)
+            label = target._label.value
+
         data_url = self.url_for_snippet(label)
         with html("a", ('data-url', data_url), klass="snippet-ref"):
-            doc.asis(self.format(title), markdown=True)
+            doc.asis(self.format(title, blanks_to_pars=True))
+        return doc.getvalue()
 
     def url_for_snippet(self, label):
         """
@@ -454,9 +505,13 @@ class QqHTMLFormatter(object):
 
             number = tag.get("number", "")
             with html("span", klass="env-title env-title__" + name):
-                text(join_nonempty(env_localname, number) + ".")
+                if tag.find("label"):
+                    with html("a", klass="env-title env-title__" + name, href="#" + self.label2id(tag._label.value)):
+                        text(join_nonempty(env_localname, number) + ".")
+                else:
+                    text(join_nonempty(env_localname, number) + ".")
 
-            doc.asis(" "+self.format(tag, markdown = True))
+            doc.asis(" " + self.format(tag, blanks_to_pars= True))
         return "<p>"+doc.getvalue()+"</p>\n<p>"
 
     def handle_proof(self, tag: QqTag) -> str:
@@ -485,7 +540,7 @@ class QqHTMLFormatter(object):
                     proofline = 'Proof'
                 doc.asis(join_nonempty(self.localize(proofline),
                                        self.format(tag.find("of")))+".")
-            doc.asis(" "+self.format(tag, markdown = True))
+            doc.asis(" " + self.format(tag, blanks_to_pars=True, keep_end_pars=False))
             doc.asis("<span class='end-of-proof'>&#8718;</span>")
         return doc.getvalue()+"\n<p>"
 
@@ -496,7 +551,7 @@ class QqHTMLFormatter(object):
         """
         doc, html, text = Doc().tagtext()
         with html("span", klass="paragraph"):
-            doc.asis(self.format(tag, markdown = True).strip()+".")
+            doc.asis(self.format(tag, blanks_to_pars=False).strip() + ".")
         return "<p>" + doc.getvalue()+" "
 
     def handle_figure(self, tag: QqTag) -> str:
@@ -511,34 +566,60 @@ class QqHTMLFormatter(object):
             \caption
                 Some figure
 
-        Uses tags: figure, label, pythonfigure, caption, number
+        Uses tags: figure, label, pythonfigure, caption, number, plotly
 
         :param tag: QqTag
         :return: HTML of figure
         """
         doc, html, text = Doc().tagtext()
+        subtags = ['pythonfigure', 'plotly']
         with html("div", klass="figure"):
             if tag.find("label"):
                 doc.attr(id=self.label2id(tag._label.value))
+                label = tag._label.value
+            else:
+                label = None
             for child in tag:
                 if isinstance(child, QqTag):
-                    if child.name == 'pythonfigure':
-                        path = self.make_python_fig(child.text_content, exts=("svg"))
-                        with html("img", klass="figure img-responsive",
-                                  src=self.figures_prefix + path + "/" + self.default_figname + ".svg"):
-                            pass
+                    if child.name in subtags:
+                        doc.asis(self.handle(child))
                     elif child.name == 'caption':
                         with html("div", klass="figure_caption"):
-                            text(join_nonempty(self.localize("Fig."), tag.get("number"))+": ")
-                            doc.asis(self.format(child, markdown=True))
+                            if label is not None:
+                                with html("a", klass="figure_caption_anchor", href="#" + self.label2id(label)):
+                                    text(join_nonempty(self.localize("Fig."), tag.get("number")))
+                                text(": ")
+                            else:
+                                text(join_nonempty(self.localize("Fig."), tag.get("number"))+": ")
+                            doc.asis(self.format(child, blanks_to_pars=True))
         return doc.getvalue()
+
+    def handle_pythonfigure(self, tag: QqTag) -> str:
+        """
+        Uses tags: pythonfigure, style
+
+        :param tag:
+        :return:
+        """
+        path = self.make_python_fig(tag.text_content, exts=("svg"))
+        doc, html, text = Doc().tagtext()
+        with html("img", klass="figure img-responsive",
+                  src=self.url_for_figure(path + "/" + self.default_figname + ".svg")):
+            if tag.exists("style"):
+                doc.attr(style=tag._style.value)
+        return doc.getvalue()
+
+    def handle_plotly(self, tag: QqTag) -> str:
+        return "".join(self.make_plotly_fig(tag.text_content))
+
+
 
     def handle_snippet(self, tag: QqTag) -> str:
         """
         :param tag:
         :return:
         """
-        return self.format(tag, markdown=True)
+        return self.format(tag, blanks_to_pars=True)
 
     def handle_hide(self, tag: QqTag) -> str:
         """
@@ -547,10 +628,32 @@ class QqHTMLFormatter(object):
         """
         return ""
 
+    def handle_em(self, tag: QqTag) -> str:
+        """
+        Example:
+            Let us define \em{differential equation}.
+
+        :param tag:
+        :return:
+        """
+        return "<em>" + self.format(tag) + "</em>"
+
+    def handle_emph(self, tag: QqTag) -> str:
+        """
+        Alias for em
+        :param tag:
+        :return:
+        """
+        return self.handle_em(tag)
+
+
+
     def get_counter_for_tag(self, tag: QqTag) -> Counter:
         name = tag.name
         counters = self.counters
         while True:
+            if tag.exists('nonumber'):
+                return None
             current = counters.get(name)
             if current is None:
                 return None
@@ -558,13 +661,14 @@ class QqHTMLFormatter(object):
                 return current
             if isinstance(current, dict):
                 counters = current
-                name = tag.parent.name
+                tag = tag.parent
+                name = tag.name
                 continue
             return None
 
     def preprocess(self, root: QqTag):
         """
-        Uses tags: number, label, nonumber
+        Uses tags: number, label, nonumber, flabel
 
         :return:
         """
@@ -574,18 +678,24 @@ class QqHTMLFormatter(object):
                 if (name in self.counters or name in self.enumerateable_envs) and not (tag.find('number') or
                                                                                            tag.exists('nonumber')):
                     counter = self.get_counter_for_tag(tag)
-                    counter.increase()
-                    tag.append_child(QqTag({'number': str(counter)}))
-                    if tag.find('label'):
-                        label = tag._label.value
-                        self.label2number[label] = str(counter)
-                        self.label2title[label] = tag.text_content
+                    if counter is not None:
+                        counter.increase()
+                        tag.append_child(QqTag({'number': str(counter)}))
+                        if tag.find('label'):
+                            label = tag._label.value
+                            self.label2number[label] = str(counter)
+                            # self.label2title[label] = tag.text_content
                 if tag.find('label') and tag.find('number'):
                     self.label2number[tag._label.value] = tag._number.value
                 if tag.find('label'):
                     self.label2tag[tag._label.value] = tag
+                if tag.find('flabel'):
+                    self.flabel2tag[tag._flabel.value.lower()] = tag
                 self.preprocess(tag)
 
+    def find_tag_by_flabel(self, s):
+        flabel = process.extractOne(s.lower(), self.flabel2tag.keys())
+        return self.flabel2tag.get(flabel)
 
     def mk_chapters(self):
         curchapter = Chapter(QqTag("_zero_chapter"),  [])
@@ -621,7 +731,8 @@ class QqHTMLFormatter(object):
         Optionally, fromindex can be provided. In this case function will return empty string if
         target chapter coincides with current one.
 
-        You can inherit from QqHTMLFormatter and override this method too use e.g. Flask's url_for.
+        You can inherit from QqHTMLFormatter and override url_for_chapter_by_index and url_for_chapter_by_label too
+        use e.g. Flask's url_for.
         """
         assert index is not None or label is not None
         if index is None:
@@ -632,8 +743,15 @@ class QqHTMLFormatter(object):
         if label is None:
             label = self.chapters[index].header.find("label")
         if not label:
-            return "/chapter/index/" + urllib.parse.quote(str(index))
-        return "/chapter/label/" + urllib.parse.quote(label.value)
+            return self.url_for_chapter_by_index(index)
+        return self.url_for_chapter_by_label(label.value)
+
+    def url_for_chapter_by_index(self, index):
+        return "/chapter/index/" + urllib.parse.quote(str(index))
+
+    def url_for_chapter_by_label(self, label):
+        return "/chapter/label/" + urllib.parse.quote(label)
+
 
     def add_chapter(self, chapter):
         if chapter.header.find("label"):
@@ -642,13 +760,13 @@ class QqHTMLFormatter(object):
 
     def do_format(self):
         self.preprocess(self.root)
-        return self.format(self.root, markdown=True)
+        return self.format(self.root, blanks_to_pars=True)
 
-    def h_id(self, tag) -> str:
+    def tag_id(self, tag) -> str:
         """
-        Returns id of h:
+        Returns id of tag:
         - If it has label, it is label-based
-        - If it does not have label, but have number (which is true after preprocess for all h's), it is number-based
+        - If it does not have label, but have number, it is number-based
         :param tag:
         :return: str id
         """
@@ -699,13 +817,13 @@ class QqHTMLFormatter(object):
 
                         item_doc, item_html, item_text = Doc().tagtext()
                         with item_html("li", klass = "toc_item toc_item_level_%i" % curlevel):
-                            with item_html("a", href=targetpage+"#"+self.h_id(child)):
-                                item_text(self.format(child))
+                            with item_html("a", href=targetpage+"#"+self.tag_id(child)):
+                                item_text(self.format(child, blanks_to_pars=False))
                         chunk.append(item_doc.getvalue())
                         doc.asis("".join(chunk))
         return doc.getvalue()
 
-    def tag_id(self, tag):
+    def tag_hash_id(self, tag):
         """
         Returns autogenerated tag id based on tag's contents.
         It's first 5 characters of MD5-hashsum of tag's content
@@ -733,6 +851,6 @@ class QqHTMLFormatter(object):
         :return:
         """
         if not tag.exists('md5id'):
-            tag.append_child(QqTag('md5id', [self.tag_id(tag)]))
+            tag.append_child(QqTag('md5id', [self.tag_hash_id(tag)]))
         template = Template(filename="templates/quiz.html")
         return template.render(formatter=self, tag=tag)
