@@ -100,6 +100,10 @@ class PlotlyPlotter(object):
         return ret
 
 
+def rstrip_p(s: str) -> str:
+    return re.sub(r"(\s*</?p>\s*)+$", "", s)
+
+
 class QqHTMLFormatter(object):
 
     def __init__(self, root: QqTag=None):
@@ -189,7 +193,7 @@ class QqHTMLFormatter(object):
             make_sure_path_exists(path)
             loc = {}
             gl = self.pythonfigure_globals
-            plt.cla()
+            plt.clf()
             exec(code, gl, loc)
             if tight_layout:
                 plt.tight_layout()
@@ -539,8 +543,8 @@ class QqHTMLFormatter(object):
                 else:
                     proofline = 'Proof'
                 doc.asis(join_nonempty(self.localize(proofline),
-                                       self.format(tag.find("of")))+".")
-            doc.asis(" " + self.format(tag, blanks_to_pars=True, keep_end_pars=False))
+                                       self.format(tag.find("of"), blanks_to_pars=False)).rstrip()+".")
+            doc.asis(rstrip_p(" " + self.format(tag, blanks_to_pars=True)))
             doc.asis("<span class='end-of-proof'>&#8718;</span>")
         return doc.getvalue()+"\n<p>"
 
@@ -554,9 +558,32 @@ class QqHTMLFormatter(object):
             doc.asis(self.format(tag, blanks_to_pars=False).strip() + ".")
         return "<p>" + doc.getvalue()+" "
 
+    def handle_list(self, tag: QqTag, type):
+        doc, html, text = Doc().tagtext()
+        with html(type):
+            for item in tag("item"):
+                with html("li"):
+                    doc.asis(self.format(item))
+        return doc.getvalue()
+    def handle_enumerate(self, tag: QqTag):
+        """
+        Uses tags: item
+        :param tag:
+        :return:
+        """
+        return self.handle_list(tag, "ol")
+
+    def handle_itemize(self, tag: QqTag):
+        """
+        Uses tags: item
+        :param tag:
+        :return:
+        """
+        return self.handle_list(tag, "ul")
+
     def handle_figure(self, tag: QqTag) -> str:
         """
-        Currently, only python-generated figures are supported.
+        Currently, only python-generated figures and plotly figures are supported.
 
         Example:
 
@@ -566,7 +593,7 @@ class QqHTMLFormatter(object):
             \caption
                 Some figure
 
-        Uses tags: figure, label, pythonfigure, caption, number, plotly
+        Uses tags: figure, label, caption, number
 
         :param tag: QqTag
         :return: HTML of figure
@@ -616,10 +643,17 @@ class QqHTMLFormatter(object):
 
     def handle_snippet(self, tag: QqTag) -> str:
         """
+        Uses tags: hidden, backref, label
+
         :param tag:
         :return:
         """
-        return self.format(tag, blanks_to_pars=True)
+        anchor = ""
+        if not tag.exists("backref") and tag.exists("label"):
+            anchor = "<span id='{}'></span>".format(self.label2id(tag._label.value))
+        if tag.exists("hidden"):
+            return anchor
+        return anchor + self.format(tag, blanks_to_pars=True)
 
     def handle_hide(self, tag: QqTag) -> str:
         """
@@ -694,7 +728,7 @@ class QqHTMLFormatter(object):
                 self.preprocess(tag)
 
     def find_tag_by_flabel(self, s):
-        flabel = process.extractOne(s.lower(), self.flabel2tag.keys())
+        flabel = process.extractOne(s.lower(), self.flabel2tag.keys())[0]
         return self.flabel2tag.get(flabel)
 
     def mk_chapters(self):

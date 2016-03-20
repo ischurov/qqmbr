@@ -70,6 +70,11 @@ def axes4x4(labels=("t","x")):
     plt.text(3.8,0.2,"$%s$" % labels[0],fontsize=20)
     plt.text(0.1,3.7,"$%s$"% labels[1],fontsize=20)
 
+def draw_axes(xmin, xmax, ymin, ymax, labels=("x", "y")):
+    plt.axis([xmin, xmax, ymin, ymax])
+    center_spines()
+    plt.text(xmax, 0, "$%s$" % labels[0],fontsize=20, verticalalignment='bottom', horizontalalignment='right')
+    plt.text(0, ymax, "$%s$" % labels[1],fontsize=20, verticalalignment='top', horizontalalignment='right')
 def normdirfield(xs,ys,f,**kw):
     """
     plot normalized direction field
