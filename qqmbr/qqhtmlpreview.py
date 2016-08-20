@@ -89,6 +89,23 @@ def show_html(filename):
     html = formatter.do_format()
     return render_template("preview.html", html=html, title=tree._h1.text_content, toc=formatter.mk_toc())
 
+@app.route("/simple-preview/<filename>")
+def simple_show_html(filename):
+    path = os.path.join("samplefiles",filename)
+    if not os.path.isfile(path):
+        abort(404)
+    with open(path) as f:
+        lines = f.readlines()
+    parser = QqParser()
+    formatter = QqFlaskHTMLFormatter()
+    parser.allowed_tags.update(formatter.uses_tags())
+    parser.allowed_tags.add('idx') # for indexes
+    tree = parser.parse(lines)
+    formatter.root = tree
+    formatter.counters['h1'].value = 2
+    html = formatter.do_format()
+    return render_template("preview.html", html=html, title=tree._h1.text_content)
+
 @app.route("/eq/<number>/")
 def show_eq(number):
     if allthebook is None:
