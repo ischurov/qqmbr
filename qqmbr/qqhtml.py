@@ -134,7 +134,8 @@ class QqHTMLFormatter(object):
         self.counters['figure'] = self.counters['h1'].spawn_child()
 
         self.enumerateable_envs = {name: name.capitalize() for name in ['remark', 'theorem', 'example', 'exercise',
-                                                                     'definition', 'proposition', 'lemma', 'question']}
+                                                                        'definition', 'proposition', 'lemma',
+                                                                        'question', 'corollary']}
 
         # You can make self.localnames = {} to use plain English localization
 
@@ -150,7 +151,8 @@ class QqHTMLFormatter(object):
             'Proof outline': 'Набросок доказательства',
             'Figure': 'Рисунок',
             'Fig.': "Рис.",
-            'Question': 'Вопрос'
+            'Question': 'Вопрос',
+            'Corollary': 'Следствие',
         }
 
         self.formulaenvs = {'eq', 'equation', 'align'}
@@ -166,8 +168,21 @@ class QqHTMLFormatter(object):
         plt.rcParams['figure.figsize'] = (6, 4)
 
         self.pythonfigure_globals = {'plt': plt}
+        self.code_prefixes = {'pythonfigure': 'import matplotlib.pyplot as plt\n',
+                              'plotly': ("import plotly\n"
+                                        "import plotly.graph_objs as go\n"
+                                        "from plotly.offline import iplot as plot\n"
+                                        "from plotly.offline import init_notebook_mode\n\n"
+                                        "init_notebook_mode()\n\n")}
+
         self.plotly_plotter = PlotlyPlotter()
+
         self.plotly_globals = {}
+
+        self.css = {}
+        self.js_top = {}
+        self.js_bottom = {}
+        self.js_onload = {}
 
     def url_for_figure(self, s):
         """
@@ -193,7 +208,7 @@ class QqHTMLFormatter(object):
             make_sure_path_exists(path)
             loc = {}
             gl = self.pythonfigure_globals
-            plt.clf()
+            plt.close()
             exec(code, gl, loc)
             if tight_layout:
                 plt.tight_layout()
@@ -207,8 +222,10 @@ class QqHTMLFormatter(object):
             import plotly
         loc = {}
         self.plotly_globals.update({'plot': self.plotly_plotter.plot, 'go': plotly.graph_objs, 'plotly': plotly})
+
         gl = self.plotly_globals
         exec(code, gl, loc)
+        self.js_top['plotly'] = "<script src='https://cdn.plot.ly/plotly-latest.min.js'></script>"
         return self.plotly_plotter.get_data()
 
     def uses_tags(self):
@@ -593,13 +610,14 @@ class QqHTMLFormatter(object):
             \caption
                 Some figure
 
-        Uses tags: figure, label, caption, number
+        Uses tags: figure, label, caption, number, showcode, collapsed
 
         :param tag: QqTag
         :return: HTML of figure
         """
         doc, html, text = Doc().tagtext()
-        subtags = ['pythonfigure', 'plotly']
+        subtags = ['pythonfigure', 'plotly', 'rawhtml']
+        langs = {'pythonfigure': 'python', 'plotly': 'python', 'rawhtml': 'html'}
         with html("div", klass="figure"):
             if tag.find("label"):
                 doc.attr(id=self.label2id(tag._label.value))
@@ -609,6 +627,9 @@ class QqHTMLFormatter(object):
             for child in tag:
                 if isinstance(child, QqTag):
                     if child.name in subtags:
+                        if tag.exists("showcode"):
+                            doc.asis(self.showcode(child, collapsed=tag.exists("collapsed"),
+                                                   lang = langs.get(child.name)))
                         doc.asis(self.handle(child))
                     elif child.name == 'caption':
                         with html("div", klass="figure_caption"):
@@ -628,6 +649,7 @@ class QqHTMLFormatter(object):
         :param tag:
         :return:
         """
+
         path = self.make_python_fig(tag.text_content, exts=("svg"))
         doc, html, text = Doc().tagtext()
         with html("img", klass="figure img-responsive",
@@ -639,6 +661,70 @@ class QqHTMLFormatter(object):
     def handle_plotly(self, tag: QqTag) -> str:
         return "".join(self.make_plotly_fig(tag.text_content))
 
+    def showcode(self, tag: QqTag, collapsed = False, lang = None) -> str:
+        """
+        <button class="source toggle btn btn-xs btn-primary">
+<span class="glyphicon glyphicon-chevron-up"></span>
+</button>
+
+        :param tag:
+        :return:
+        """
+
+        self.css['highlightjs'] = (
+            '<link rel="stylesheet" '
+            'href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.2.0/styles/default.min.css">\n'
+            '<style type="text/css">\n'
+            '.hljs {background: inherit;}\n'
+            '</style>\n'
+        )
+        self.js_top['highlightjs'] = (
+            '<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.2.0/highlight.min.js"></script>\n'
+            '<script>hljs.initHighlightingOnLoad();</script>'
+        )
+        self.js_onload['highlightjs'] = """
+        function toggle_block(obj, show) {
+          var span = obj.find('span');
+          if(show === true){
+            span.removeClass('glyphicon-chevron-up').addClass('glyphicon-chevron-down');
+            obj.next('pre').slideDown();
+          }
+          else {
+            span.removeClass('glyphicon-chevron-down').addClass('glyphicon-chevron-up');
+            obj.next('pre').slideUp();
+          }
+        }
+
+        /* onclick toggle next code block */
+        $('.toggle').click(function() {
+          var span = $(this).find('span');
+          toggle_block($(this), !span.hasClass('glyphicon-chevron-down'));
+          return false
+        })
+        """
+        button = """
+        <button class="source toggle btn btn-xs btn-primary">
+        <span class="glyphicon glyphicon-chevron-up"></span>
+        </button>
+        """
+
+        if not collapsed:
+            button = button.replace("glyphicon-chevron-up", "glyphicon-chevron-down")
+
+        doc, html, text = Doc().tagtext()
+        with html("pre"):
+            if collapsed:
+                doc.attr(style="display:none")
+            with html("code"):
+                if lang:
+                    doc.attr(klass="lang-" + lang)
+
+                doc.asis(self.code_prefixes.get(tag.name, "# "+tag.name))
+                # add a prefix if exists
+
+                doc.asis(tag.text_content)
+
+        return "<div style='text-align: left'>" + button + doc.getvalue() + "</div>"
 
 
     def handle_snippet(self, tag: QqTag) -> str:
@@ -888,3 +974,6 @@ class QqHTMLFormatter(object):
             tag.append_child(QqTag('md5id', [self.tag_hash_id(tag)]))
         template = Template(filename="templates/quiz.html")
         return template.render(formatter=self, tag=tag)
+
+    def handle_rawhtml(self, tag: QqTag):
+        return tag.text_content

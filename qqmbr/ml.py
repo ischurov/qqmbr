@@ -569,18 +569,15 @@ class QqParser(object):
                                     stack[-1].bracket = None
                                     stack[-1].indent = current_indent
                                     current_indent += 4
-                                    chunk = []
-
-                                    skip = True
-                                    # this is done to skip the rest of line at the end of while
-
-                                    continue
                                 else:
                                     self.pop_stack()
                                     current_tag = stack[-1].tag
-                                    chunk = []
-                                    skip = True
-                                    continue
+
+                                chunk = []
+                                skip = True
+                                # this is done to skip the rest of line at the end of while
+
+                                break
 
                 inline_tag = m.group('tag')
                 if inline_tag is not None and stack[-1].bracket != '[':

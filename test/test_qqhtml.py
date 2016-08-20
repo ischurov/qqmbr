@@ -154,6 +154,25 @@ See \ref[section|sec:first] for details.
         self.assertEqual(soup("a")[1]['href'], "#label_sec_first")
         self.assertEqual(soup("a")[1].string, "section 1")
 
+    def test_refs_with_separator(self):
+        doc = r"""\h1 Hello \label sec:first
+
+\h1 World \label sec:other
+
+See
+\ref[section|sec:first] and \ref[section|sec:other] for details.
+"""
+        parser = QqParser()
+        formatter = QqHTMLFormatter()
+        parser.allowed_tags.update(formatter.uses_tags())
+        tree = parser.parse(doc)
+        formatter.root = tree
+        print(tree.as_list())
+        html = formatter.do_format()
+        soup = BeautifulSoup(html, "html.parser")
+        self.assertEqual(soup("a")[2].contents[0], "section 1")
+
+
 
 
 

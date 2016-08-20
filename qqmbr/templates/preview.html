@@ -50,7 +50,7 @@ LINK1, LINK2 links in the navigation topbar (remove, edit, or add more)
 Footer with author(s) and copyright (remove or edit)
 -->
 
-<link href="http://getbootstrap.com/dist/css/bootstrap.min.css" rel="stylesheet">
+<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css" integrity="sha384-1q8mTJOASx8j1Au+a5WDVnPi2lkFfwwEAa8hDDdjZlpLegxhjVME1fgjWPGmkzs7" crossorigin="anonymous">
 <link type="text/css" rel="stylesheet" href="https://cdn.jsdelivr.net/qtip2/2.2.1/jquery.qtip.min.css" />
 
 <!-- Can add other themes and adjust colors in the navigation sidebar -->
@@ -101,6 +101,9 @@ div.quiz {
         width:100%;
     }
 
+   .toggle{
+        text-transform: capitalize;
+      }
     /*
     div.env__proof {
         background:rgba(30,150,30,0.03);
@@ -111,7 +114,7 @@ div.quiz {
     */
     span.end-of-proof {
 
-        float: right;
+      float: right;
     }
 
     span.section__number {
@@ -137,6 +140,7 @@ div.quiz {
     }
 </style>
 
+
 </head>
 
 <body>
@@ -161,6 +165,7 @@ div.quiz {
     </ul>
   </nav>
 </div>
+
 </header>
 
 
@@ -223,7 +228,8 @@ the docs.min.css style, which makes orange math...
   </div>
  </div>
 </div>
-<script src='https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML'></script>
+<!-- <script src='https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML'></script> -->
+<script src="/assets/js/mathjax/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
     <script type="text/x-mathjax-config">
   MathJax.Hub.Config({
     extensions: ["tex2jax.js"],
@@ -237,9 +243,22 @@ the docs.min.css style, which makes orange math...
   });
 </script>
 <!-- JavaScript placed at the end of the document so the pages load faster -->
-{{ scripts | safe }}
+{{ js_bottom | safe }}
 <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
-<script src="http://getbootstrap.com/dist/js/bootstrap.min.js"></script>
+<script defer="defer">
+        $(function() {
+            "use strict";
+
+            var $window = $(window);
+            var $body = $(document.body);
+
+            {{ js_onload | safe }}
+
+        })
+
+</script>
+
+<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/js/bootstrap.min.js" integrity="sha384-0mSbJDEHialfmuBBQP6A4Qrprq5OVfW37PRR3j5ELqxss1yVqOtnepnHVP9aJ7xS" crossorigin="anonymous"></script>
 <!-- NOTE: replace rawgit.com by cdn.rawgit.com for production or
 sites with heavy traffic -->
 <script src="https://rawgit.com/hplgit/doconce/master/bundled/html_styles/style_bootstrap_wtoc/js/docs.min.js"></script>

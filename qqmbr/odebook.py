@@ -26,6 +26,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib as mpl
+import scipy
 from scipy import integrate
 
 def mquiver(xs, ys, v, **kw):
@@ -158,12 +159,13 @@ class CenteredFormatter(mpl.ticker.ScalarFormatter):
             return mpl.ticker.ScalarFormatter.__call__(self, value, pos)
 
 
-def eulersplot(f, xa, xb, ya, n = 500, **kw):
+def eulersplot(f, xa, xb, ya, n = 500, toolarge = 1E10, **kw):
     """plots numerical solution y'=f
 
     args
     ====
 
+    - f(x,y): a function in rhs
     - xa: initial value of independent variable
     - xb: final value of independent variable
     - ya: initial value of dependent variable
@@ -173,7 +175,10 @@ def eulersplot(f, xa, xb, ya, n = 500, **kw):
     x = [xa] 
     y = [ya]
     for i in range(1,n+1):
-        y.append(y[-1] + h * f(x[-1], y[-1]))
+        newy = y[-1] + h * f(x[-1], y[-1])
+        if abs(newy) > toolarge:
+            break
+        y.append(newy)
         x.append(x[-1] + h)
     plt.plot(x,y, **kw)
 
@@ -240,7 +245,7 @@ def plottrajectories(fs, x0, t=np.linspace(1,400,10000), **kw):
     plt.plot(X[:,0], X[:,1], **kw)
 
 
-def phaseportrait(fs,inits,t=(-5,5),n=100,**kw):
+def phaseportrait(fs,inits,t=(-5,5),n=100, head_width = 0.13, head_length = 0.3, **kw):
     """
     plots phase portrait of the differential equation (\dot x,\dot y)=fs(x,y)
 
@@ -269,9 +274,10 @@ def phaseportrait(fs,inits,t=(-5,5),n=100,**kw):
             for i,Z in enumerate([X,Y]):
                 Z.extend(points[:,i])
                 Z.append(None)
-        diriv = fs(x0)
-        plt.arrow(x0[0]-diriv[0],x0[1]-diriv[1],diriv[0],diriv[1],
-              head_width=0.2, lw=0.0)
+        direction = fs(x0)
+        direction = direction / scipy.linalg.norm(direction) * 0.01
+        plt.arrow(x0[0]-direction[0],x0[1]-direction[1],direction[0],direction[1],
+              head_width=head_width, head_length=head_length, lw=0.0, **kw)
     plt.plot(X,Y,**kw)
 
 
