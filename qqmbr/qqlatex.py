@@ -1,6 +1,6 @@
 from qqmbr.ml import QqTag
 
-class QqXMLFormatter(object):
+class QqLaTeXFormatter(object):
 
     def __init__(self, root: QqTag=None, allowed_tags=None):
         self.root = root
@@ -8,6 +8,8 @@ class QqXMLFormatter(object):
         self.enumerateable_envs = {name: name.capitalize() for name in ['remark', 'theorem', 'example', 'exercise',
                                                                     'definition', 'proposition', 'lemma',
                                                                         'question', 'corollary']}
+        self.tag_to_latex = {'h1':'section', 'h2':'subsection',
+                             'h3':'subsubsection', 'h4':'paragraph'}
 
     def uses_tags(self):
         return self.allowed_tags
@@ -59,7 +61,7 @@ class QqXMLFormatter(object):
 \\begin{{{name}}}
     {content}
 \end{{{name}}}
-""".format(name=name, content=self.format(tag))
+""".format(name=self.name, content=self.format(tag))
 
     def handle_h1(self, tag):  # h1 = chapter
         """
@@ -91,11 +93,12 @@ class QqXMLFormatter(object):
         -------
 
         """
+        name = tag.name
         return """
 \\begin{{{name}}}
     {content}
 \end{{{name}}}
-""".format(name="section", content=self.format(tag))
+""".format(name=self.tag_to_latex[name], content=self.format(tag))
 
     def handle_paragraph(self, tag):  #paragraph = subsection
         """
@@ -109,9 +112,11 @@ class QqXMLFormatter(object):
         -------
 
         """
-        if tag.find('\label'):  #this does not work, but have a look
+        name = tag.name
+        print(tag)
+        if tag.find('label'):  #this does not work, but have a look
             print(tag)
-            label = tag.split('\label ')[-1]
+            label = tag.split('label ')[-1]
             return """
 \\begin{{{name}}} \label{{{label}}}
     {content}
@@ -122,7 +127,7 @@ class QqXMLFormatter(object):
 \\begin{{{name}}}
     {content}
 \end{{{name}}}
-""".format(name="subsection", content=self.format(tag))
+""".format(name=self.tag_to_latex[name], content=self.format(tag))
 
     def handle_eq(self, tag: QqTag) -> str:
         """
