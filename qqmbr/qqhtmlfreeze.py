@@ -1,5 +1,5 @@
 from flask_frozen import Freezer
-from qqmbr.qqhtmlpreview import app
+from qqhtmlpreview import app
 
 app.config['mathjax_node'] = True
 

@@ -1,21 +1,21 @@
 # (c) Ilya V. Schurov, 2016
 # Available under MIT license (see LICENSE file in the root folder)
 
-from collections import MutableSequence, Sequence, Mapping
+from collections import MutableSequence, Sequence, Mapping, defaultdict
 from sortedcontainers import SortedList
 
 
 class IndexedList(MutableSequence):
     """
     IndexedList is a mixture of list and dictionary.
-    Every element in IndexedList has a key and one can access perform search by key.
+    Every element in IndexedList has a key and one can perform fast search by key.
 
     The key is calculated in the following way:
 
     - ``str``: key is ``str`` (it is a special case)
-    - ``list``: key is first element of the list or ``None`` if there the list is empty
+    - ``list``: key is a first element of the list or ``None`` if there the list is empty
     - ``dictionary``: if it has only one record, its key is a key, otherwise ``Sequence.Mapping`` is a key
-    - any other object: we'll look for .__qqkey__() method, and fallback to ``str`` if fail
+    - any other object: we'll look for .qqkey() method, and fallback to ``str`` if fail
 
     The main purpose of this class is to provide effective BeautifulSoup-style navigation over the s-expression-like
     data structures
@@ -25,13 +25,13 @@ class IndexedList(MutableSequence):
         if len(iterable) == 1 and isinstance(iterable[0], Sequence):
             iterable = iterable[0]
         self._container = list(iterable)
-        self._locator = {}
-        self.update_index()
+        self._directory = defaultdict(SortedList)
+        self.update_directory()
 
     def __delitem__(self, i):
         old_element = self._container[i]
-        self._locator[self.get_key(old_element)].remove(i)
-        for key, places in self._locator.items():
+        self._directory[self.get_key(old_element)].remove(i)
+        for key, places in self._directory.items():
             for k, index in enumerate(places):
                 if index >= i:
                     places[k] -= 1
@@ -45,7 +45,7 @@ class IndexedList(MutableSequence):
         return len(self._container)
 
     def __setitem__(self, i, item):
-        places = self._locator[self.get_key(self._container[i])]
+        places = self._directory[self.get_key(self._container[i])]
         places.remove(i)
 
         self._container[i] = item
@@ -53,7 +53,7 @@ class IndexedList(MutableSequence):
         self.add_index(i, item)
 
     def insert(self, i, x):
-        for key, places in self._locator.items():
+        for key, places in self._directory.items():
             for k in range(len(places)-1, -1, -1):
                 if places[k] >= i:
                     places[k] += 1
@@ -69,31 +69,29 @@ class IndexedList(MutableSequence):
         return "IndexedList(%s)" % repr(self._container)
 
     def find_index(self, key):
-        return self._locator[key][0]
+        return self._directory[key][0]
 
-    def find_all_index(self, key):
-        return self._locator[key]
+    def find_all_indexes(self, key):
+        return self._directory.get(key, [])
 
     def find_all(self, key):
-        return [self._container[i] for i in self.find_all_index(key)]
+        return [self._container[i] for i in self.find_all_indexes(key)]
 
     def find(self, key):
         return self._container[self.find_index(key)]
 
-    def update_index(self):
-        self._locator.clear()
+    def update_directory(self):
+        self._directory.clear()
         for i, item in enumerate(self._container):
             self.add_index(i, item)
 
     def add_index(self, i, item):
         key = self.get_key(item)
-        if key not in self._locator:
-            self._locator[key] = SortedList()
-        self._locator[key].add(i)
+        self._directory[key].add(i)
 
     def is_consistent(self):
         for i, el in enumerate(self._container):
-            if i not in self.find_all_index(self.get_key(el)):
+            if i not in self.find_all_indexes(self.get_key(el)):
                 return False
         return True
 
@@ -105,11 +103,16 @@ class IndexedList(MutableSequence):
         else:
             return False
 
-    def get_key(self, item):
+    def clear(self):
+        self._container.clear()
+        self._directory.clear()
+
+    @staticmethod
+    def get_key(item):
         if isinstance(item, str):
             return str
         try:
-            return item.__qqkey__()
+            return item.qqkey()
         except AttributeError:
             if isinstance(item, Sequence):
                 if item:
@@ -123,6 +126,3 @@ class IndexedList(MutableSequence):
                     return Mapping
             else:
                 return str
-
-
-

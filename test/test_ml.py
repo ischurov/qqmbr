@@ -1,10 +1,17 @@
 # (c) Ilya V. Schurov, 2016
 # Available under MIT license (see LICENSE file in the root folder)
 
-import unittest
-from qqmbr.indexedlist import IndexedList
-from qqmbr.ml import QqTag, QqParser
 
+import sys
+import os
+
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                '..', 'qqmbr'))
+
+from ml import QqTag, QqParser
+# from qqmbr.indexedlist import IndexedList
+
+import unittest
 
 class TestQqTagMethods(unittest.TestCase):
     def test_create_qqtag(self):
@@ -22,11 +29,12 @@ class TestQqTagMethods(unittest.TestCase):
             ])])
 
         self.assertEqual(q.name, 'a')
-        #self.assertEqual(q._children, IndexedList([QqTag('b', ['hello']), QqTag('c', ['world']), QqTag('b', ['this']),
+        # self.assertEqual(q._children, IndexedList([QqTag('b', ['hello']), QqTag('c', ['world']), QqTag('b', ['this']),
         #                                           QqTag('--+-', [QqTag('b', ['way']), 'this'])]))
-        #self.assertEqual(eval(repr(q)), q)
+        # self.assertEqual(eval(repr(q)), q)
         self.assertEqual(q.as_list(),
-                         ['a', ['b', 'hello'], ['c', 'world'], ['b', 'this'], ['--+-', ['b', 'way'], 'this']])
+                         ['a', ['b', 'hello'], ['c', 'world'],
+                          ['b', 'this'], ['--+-', ['b', 'way'], 'this']])
 
     def test_qqtag_accessors(self):
         q = QqTag('a', [
@@ -40,7 +48,8 @@ class TestQqTagMethods(unittest.TestCase):
 
         self.assertEqual(q._b.value, 'hello')
         self.assertEqual(q._c.value, 'world')
-        self.assertEqual([b.as_list() for b in q('b')], [['b', 'hello'], ['b', 'this']])
+        self.assertEqual([b.as_list() for b in q('b')], [['b', 'hello'],
+                                                         ['b', 'this']])
         self.assertEqual(q.find('--+-')._b.value, 'way')
         self.assertEqual(q[0].value, 'hello')
         self.assertEqual(q[1].value, 'world')
@@ -58,19 +67,19 @@ class TestQqTagMethods(unittest.TestCase):
         self.assertTrue(q._is_consistent())
         new_tag = QqTag({'qqq' : 'bbb'})
         q.append_child(new_tag)
-        self.assertEqual(new_tag.my_index, 4)
+        self.assertEqual(new_tag.index, 4)
         del q[0]
-        self.assertEqual(new_tag.my_index, 3)
+        self.assertEqual(new_tag.index, 3)
         self.assertTrue(q._is_consistent())
 
         other_tag = QqTag({'other': ['some', 'values']})
         q.insert(2, other_tag)
-        self.assertEqual(other_tag.my_index, 2)
-        self.assertEqual(new_tag.my_index, 4)
+        self.assertEqual(other_tag.index, 2)
+        self.assertEqual(new_tag.index, 4)
 
         third_tag = QqTag({'this': 'hi'})
         q[3] = third_tag
-        self.assertEqual(third_tag.my_index, 3)
+        self.assertEqual(third_tag.index, 3)
         self.assertTrue(q._is_consistent())
 
     def test_qqtag_prev_next(self):
@@ -132,7 +141,8 @@ Blank line before the end
 End"""
         parser = QqParser(allowed_tags={'tag'})
         tree = parser.parse(doc)
-        self.assertEqual(tree._tag._children, ['First\n    Second\nThird\n'])
+        self.assertEqual(tree._tag._children,
+                         ['First\n    Second\nThird\n'])
 
     def test_inline_tag1(self):
         doc = r"""Hello, \tag{inline} tag!
@@ -149,7 +159,9 @@ End"""
         parser = QqParser(allowed_tags={'tag', 'othertag'})
         tree = parser.parse(doc)
        # self.assertEqual(tree._othertag._tag.value, 'inline')
-        self.assertEqual(tree.as_list(), ['_root', 'Hello, ', ['othertag', ['tag', 'inline'], ' tag'], '!\n'])
+        self.assertEqual(tree.as_list(), ['_root', 'Hello, ',
+                                          ['othertag', ['tag', 'inline'],
+                                           ' tag'], '!\n'])
 
     def test_inline_tag3(self):
         doc = r"""Hello, \tag{
@@ -163,7 +175,8 @@ the next one\othertag{okay}}
             '_root', 'Hello, ',
             [
                 'tag',
-                '\nthis is a continuation of inline tag on the next line\n\nthe next one',
+                ('\nthis is a continuation of inline tag on the next line'
+                 '\n\nthe next one'),
                 [
                     'othertag',
                     'okay'
@@ -372,15 +385,14 @@ Hello
                           ['blocktag',
                            'Some ',
                            ['inlinetag',
-                            'started\nand here ',
-                            ['otherinlinetag', 'continued'],
-                            '\nhere ',
-                            ['otherblocktag',
-                             'started\nand here two lines ',
-                             ],
-                             ['separator'],
-                             'separated from each other\nand that\'s all for inlinetag'
-                            ],
+                            ["_item", 'started\nand here ',
+                             ['otherinlinetag', 'continued'],
+                             '\nhere ',
+                             ['otherblocktag',
+                              'started\nand here two lines ',
+                              ]],
+                           ["_item", 'separated from each other\nand that\'s all for inlinetag'
+                            ]],
                            ' we continue\n'
                            ]
                          ]
@@ -402,14 +414,17 @@ Hello
         tree = parser.parse(doc)
         self.assertEqual(tree.as_list(), ["_root", "Hello ", ["inlinetag", "some \\forbiddentag{here} okay"], " this"])
 
-
-    def test_split_by_sep(self):
+    def test_process_separator_recursively(self):
         doc = r"""\splittedtag[one|two\three|four]"""
         parser = QqParser(allowed_tags={'splittedtag', 'three'})
         tree = parser.parse(doc)
-        splitted = tree._splittedtag.split_by_sep()
 
-        self.assertEqual(splitted, [['one'], ['two', QqTag('three')], ['four']])
+        self.assertEqual(tree.as_list(),
+                         ['_root',
+                           ['splittedtag',
+                            ['_item', 'one'],
+                            ['_item', 'two', ['three']],
+                            ['_item', 'four']]])
 
     def test_escape_unescape(self):
         doc = r"""Hello
