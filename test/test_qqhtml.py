@@ -1,9 +1,15 @@
 # (c) Ilya V. Schurov, 2016
 # Available under MIT license (see LICENSE file in the root folder)
 
+import sys, os
+
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'qqmbr'))
+
+from ml import QqParser, QqTag
+from qqhtml import QqHTMLFormatter
+
+
 import unittest
-from qqmbr.ml import QqParser, QqTag
-from qqmbr.qqhtml import QqHTMLFormatter
 from bs4 import BeautifulSoup
 import os
 import contextlib
@@ -104,8 +110,7 @@ See \ref{eq:one} and \ref{eq:two}
         tree = parser.parse(doc)
         html.root = tree
         html.counters['equation'].showparents = False
-        with working_directory("../qqmbr"):
-            s = html.do_format()
+        s = html.do_format()
         soup = BeautifulSoup(s, 'html.parser')
         self.assertEqual(soup.text, "\\[\n\\begin{align}\n\nc^2 &= a^2 + b^2 \n\\tag{1}\n\\\\\n"
                                     "c &= \\sqrt{a^2 + b^2} \n\\tag{2}\n\\\\\n\\end{align}\n\\]\nSee (1) and (2)\n")

@@ -1,8 +1,14 @@
 # (c) Ilya V. Schurov, 2016
 # Available under MIT license (see LICENSE file in the root folder)
 
+import sys, os
+
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'qqmbr'))
+
+from indexedlist import IndexedList
+
 import unittest
-from qqmbr.indexedlist import IndexedList
+
 from sortedcontainers import SortedList
 
 class TestIndexedlistMethods(unittest.TestCase):

@@ -1,13 +1,15 @@
 from qqmbr.ml import QqTag
 
-class QqXMLFormatter(object):
+class QqLaTeXFormatter(object):
 
     def __init__(self, root: QqTag=None, allowed_tags=None):
         self.root = root
         self.allowed_tags = allowed_tags or set()
-        self.enumerateable_envs = {name: name.capitalize() for name in ['remark', 'theorem', 'example', 'exercise',
-                                                                    'definition', 'proposition', 'lemma',
-                                                                        'question', 'corollary']}
+        self.enumerateable_envs = {name: name.capitalize() for name
+                                   in ['remark', 'theorem', 'example',
+                                       'exercise', 'definition',
+                                       'proposition', 'lemma', 'question',
+                                       'corollary']}
 
     def uses_tags(self):
         return self.allowed_tags
@@ -42,7 +44,8 @@ class QqXMLFormatter(object):
         else:
             return ""
 
-    def handle_dummy(self, tag):  # The original 'handle' function we wrote on December 1 (almost)
+    def handle_dummy(self, tag):
+        # The original 'handle' function we wrote on December 1 (almost)
         """
         Parameters
         ----------

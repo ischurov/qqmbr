@@ -2,7 +2,7 @@
 # Available under MIT license (see LICENSE file in the root folder)
 
 from collections import Sequence, MutableSequence
-from qqmbr.indexedlist import IndexedList
+from indexedlist import IndexedList
 import re
 import os
 
@@ -13,46 +13,64 @@ class QqError(Exception):
 
 class QqTag(MutableSequence):
     """
-    QqTag is essentially an IndexedList with name attached. It behaves mostly like eTree Element.
+    QqTag is essentially an IndexedList with name attached. It behaves
+    mostly like eTree Element.
 
     It provides eTree and BeautifulSoup-style navigation over its child:
-    - ``tag.find('subtag')`` returns first occurrence of a child with name ``subtag``. (Note that
-    in contrast with BeautifulSoup, this is not recursive: it searches only through tag's direct childrens.)
-    - ``tag._subtag`` is a shortcut for ``tag.find('subtag')`` (works if ``subtag`` is valid identifier)
-    - ``tag.find_all('subtag')`` returns all occurrences of tag with name 'subtag'
+    - ``tag.find('subtag')`` returns first occurrence of a child with name
+      ``subtag``. (Note that in contrast with BeautifulSoup, this is not
+      recursive: it searches only through tag's direct childrens.)
+    - ``tag._subtag`` is a shortcut for ``tag.find('subtag')``
+      (works if ``subtag`` is valid identifier)
+    - ``tag.find_all('subtag')`` returns all occurrences of tag with
+      name 'subtag'
     - ``tag('subtag')`` is shortcut for ``tag.find_all('subtag')``
 
-    If QqTag has only one child, it is called *simple*. Then its `.value` is defined. (Useful for access
-    to property-like subtags.)
+    If QqTag has only one child, it is called *simple*. Then its `.value`
+    is defined. (Useful for access to property-like subtags.)
     """
-    def __init__(self, name, children=None, parent=None, my_index=None):
+    def __init__(self, name, children=None, parent=None, index=None,
+                 adopt=False):
         if isinstance(name, dict) and len(name) == 1:
             self.__init__(*list(name.items())[0], parent=parent)
             return
 
         self.name = name
         self.parent = parent
-        self.my_index = my_index
+        self.index = index
+        # tag has to know its place in the list of parents children
+        # to be able to navigate to previous / next siblings
+
+        self.adopter = adopt
+        # tag is called 'adopter' if it does not register itself as
+        # a parent of its children
+        # TODO: write test for adoption
 
         if children is None:
             self._children = IndexedList()
-        elif isinstance(children, str) or isinstance(children, int) or isinstance(children, float):
+        elif (isinstance(children, str) or isinstance(children, int) or
+              isinstance(children, float)):
             self._children = IndexedList([children])
         elif isinstance(children, Sequence):
             self._children = IndexedList(children)
         else:
-            raise QqError("I don't know what to do with children " + str(children))
+            raise QqError("I don't know what to do with children " +
+                          str(children))
 
-        for i, child in enumerate(self):
-            if isinstance(child, QqTag):
-                child.parent = self
-                child.my_index = i
+        if not adopt:
+            for i, child in enumerate(self):
+                if isinstance(child, QqTag):
+                    child.parent = self
+                    child.index = i
 
     def __repr__(self):
         if self.parent is None:
-            return "QqTag(%s, %s)" % (repr(self.name), repr(self._children))
+            return "QqTag(%s, %s)" % (repr(self.name),
+                                      repr(self._children))
         else:
-            return "QqTag(%s, %s, parent = %s)" % (repr(self.name), repr(self._children), repr(self.parent.name))
+            return "QqTag(%s, %s, parent = %s)" % (repr(self.name),
+                                                   repr(self._children),
+                                                   repr(self.parent.name))
 
     def __str__(self):
         return "{%s : %s}" % (self.name, self._children)
@@ -74,7 +92,9 @@ class QqTag(MutableSequence):
     def value(self):
         if self.is_simple:
             return self[0].strip()
-        raise QqError("More than one child, value is not defined, QqTag: %s" % str(self))
+        raise QqError(
+            "More than one child, value is not defined, QqTag: " +
+            str(self))
 
     @value.setter
     def value(self, value):
@@ -83,7 +103,7 @@ class QqTag(MutableSequence):
         else:
             raise QqError("More than one child, cannot set value")
 
-    def __qqkey__(self):
+    def qqkey(self):
         return self.name
 
     def __getattr__(self, attr):
@@ -93,7 +113,8 @@ class QqTag(MutableSequence):
 
     def find(self, key):
         """
-        Returns direct children with the given key if it exists, otherwise returns None
+        Returns direct children with the given key if it exists,
+        otherwise returns None
         :param key: key
         :return: QqTag
         """
@@ -101,8 +122,7 @@ class QqTag(MutableSequence):
             return self._children.find(key)
 
     def find_all(self, key):
-        if key in self._children._locator:
-            return self._children.find_all(key)
+        return QqTag("_", self._children.find_all(key), adopt=True)
 
     def __call__(self, key):
         return self.find_all(key)
@@ -118,22 +138,28 @@ class QqTag(MutableSequence):
 
     def insert(self, index: int, child) -> None:
         self._children.insert(index, child)
-        child.parent = self
-        child.my_index = index
-        for i in range(index+1, len(self)):
-            self._children[i].my_index += 1
+        if not self.adopter and isinstance(child, QqTag):
+            # TODO: testme
+            child.parent = self
+            child.index = index
+            for i in range(index+1, len(self)):
+                self._children[i].index += 1
 
     def __delitem__(self, index: int):
         del self._children[index]
-        for i in range(index, len(self)):
-            self._children[i].my_index -= 1
+        if not self.adopter:
+            # TODO: testme
+            for i in range(index, len(self)):
+                self._children[i].index -= 1
 
     def append_child(self, child):
         self.insert(len(self), child)
 
     def _is_consistent(self):
+        if self.adopter:
+            raise QqError("Adopter cannot be checked for consistency")
         for i, child in enumerate(self):
-            if child.parent != self or child.my_index != i:
+            if child.parent != self or child.index != i:
                 return False
         return True
 
@@ -146,8 +172,10 @@ class QqTag(MutableSequence):
 
     def __setitem__(self, index, child):
         self._children[index] = child
-        child.parent = self
-        child.my_index = index
+        if not self.adopter:
+            #TODO testme
+            child.parent = self
+            child.index = index
 
     def __iter__(self):
         return iter(self._children)
@@ -206,7 +234,7 @@ class QqTag(MutableSequence):
             path.append(tag)
         return path
 
-    def get_granny(self):
+    def get_eva(self):
         """
         Returns ancestor which is direct child of root
 
@@ -215,27 +243,116 @@ class QqTag(MutableSequence):
         return self.ancestor_path()[-2]
 
     def next(self):
-        if not self.parent or self.my_index is None or self.my_index == len(self.parent) - 1:
+        if (not self.parent or self.index is None or
+                    self.index == len(self.parent) - 1):
             return None
-        return self.parent[self.my_index + 1]
+        return self.parent[self.index + 1]
 
     def prev(self):
-        if not self.parent or self.my_index is None or self.my_index == 0:
+        if not self.parent or self.index is None or self.index == 0:
             return None
-        return self.parent[self.my_index - 1]
+        return self.parent[self.index - 1]
 
-    def split_by_sep(self, separator='separator'):
-        chunks = []
-        chunk = []
+    def process_separator(self, separator='separator', item='_item'):
+        """
+        If tag contains separator tag, tag's children will be reformatted
+        in the following way:
+        \tag
+            something
+            \separator
+            something
+            \subtag
+                some content
+            \separator
+            other thing
+        will be changed to
+        \tag
+            \item_
+                something
+            \item_
+                something
+                \subtag
+                    some content
+            \item_
+                other thing
+        If tag does not contain separator tag, exception will be raised
+        :param separator: name of separator tag (default: 'separator'
+        :param item: name of item tag (default: `_item`)
+        :return: self
+        """
         sep = QqTag(separator)
-        for child in self:
+        if sep not in self:
+            raise QqError("Tag {} does not contains separator {}".format(
+                self, separator
+            ))
+
+        sep = QqTag(separator)
+        children_list = list(self)
+        # copy list of childrens
+
+        self._children.clear()
+        item_tag = QqTag(item)
+        for child in children_list:
             if child == sep:
-                chunks.append(chunk)
-                chunk = []
+                self.append_child(item_tag)
+                item_tag = QqTag(item)
             else:
-                chunk.append(child)
-        chunks.append(chunk)
-        return chunks
+                item_tag.append_child(child)
+        self.append_child(item_tag)
+        return self
+
+    def process_separator_recursively(self, separator='separator',
+                                      item='_item'):
+        for child in self:
+            if isinstance(child, str):
+                continue
+            if QqTag(separator) in child:
+                child.process_separator(separator=separator, item=item)
+            child.process_separator_recursively(separator=separator,
+                                                item=item)
+
+    def children_values(self, strings='raise', not_simple='raise'):
+        """
+        Make a list of .value applied to all children instances
+
+        :param strings: one of 'raise', 'keep', 'none', 'skip'
+        :param not_simple: one of 'raise', 'keep', 'none', 'skip'
+
+        What to do if string or not simple tag occurs:
+        - 'raise': raise an exception
+        - 'keep': keep tags/strings as is
+        - 'none': replace with None
+        - 'skip': skip this item
+        :return: list of strings
+        """
+        assert strings in ['raise', 'keep', 'none', 'skip']
+        assert not_simple in ['raise', 'keep', 'none', 'skip']
+        values = []
+        for child in self:
+            if isinstance(child, str):
+                if strings == 'raise':
+                    raise QqError(
+                        "string does not have value (set strings option"
+                        "to 'keep', 'none' or 'skip' to workaround)"
+                    )
+                if strings == 'keep':
+                    values.append(child)
+                elif strings == 'none':
+                    values.append(None)
+                # if strings == 'skip': pass
+            else: # QqTag assumed
+                if child.is_simple:
+                    values.append(child.value)
+                    continue
+                # child is not simple
+                if not_simple == 'raise':
+                    raise QqError(
+                        ("Child {} is not simple. Use not_simple option "
+                         "to tweak the behavior").format(child))
+                if not_simple == 'none':
+                    values.append(None)
+                # if not_simple == 'skip': pass
+        return values
 
 
 class StackElement(object):
@@ -246,7 +363,9 @@ class StackElement(object):
         self.bracket_counter = bracket_counter
 
     def __str__(self):
-        return "<%s, %s, %s, %s>" % (self.tag.name, str(self.indent), self.bracket, str(self.bracket_counter))
+        return "<%s, %s, %s, %s>" % (self.tag.name, str(self.indent),
+                                     self.bracket,
+                                     str(self.bracket_counter))
 
     def __repr__(self):
         return "StackElement(%s, %s, %s, %s)" % (repr(self.tag),
@@ -372,8 +491,6 @@ class QqParser(object):
         chunk.append(line[cursor:])
         return chunk
 
-
-
     def parse(self, lines):
         """
         :param lines:
@@ -384,7 +501,8 @@ class QqParser(object):
 
         lines.reverse()
         numbers = list(range(len(lines), 0, -1))
-        # We probably will append some elements to lines and have to maintain their numbers for error messages
+        # We probably will append some elements to lines and have to
+        # maintain their numbers for error messages
 
         tree = QqTag('_root')
         stack = [StackElement(tree, self.get_indent(lines[-1])-1)]
@@ -609,5 +727,7 @@ class QqParser(object):
 
         # append final lines to tag
         current_tag.append_line(self.unescape_line("".join(chunk)))
+
+        tree.process_separator_recursively(self.separator)
 
         return tree

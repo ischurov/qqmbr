@@ -8,14 +8,14 @@ from sortedcontainers import SortedList
 class IndexedList(MutableSequence):
     """
     IndexedList is a mixture of list and dictionary.
-    Every element in IndexedList has a key and one can access perform search by key.
+    Every element in IndexedList has a key and one can perform fast search by key.
 
     The key is calculated in the following way:
 
     - ``str``: key is ``str`` (it is a special case)
     - ``list``: key is first element of the list or ``None`` if there the list is empty
     - ``dictionary``: if it has only one record, its key is a key, otherwise ``Sequence.Mapping`` is a key
-    - any other object: we'll look for .__qqkey__() method, and fallback to ``str`` if fail
+    - any other object: we'll look for .qqkey() method, and fallback to ``str`` if fail
 
     The main purpose of this class is to provide effective BeautifulSoup-style navigation over the s-expression-like
     data structures
@@ -105,11 +105,16 @@ class IndexedList(MutableSequence):
         else:
             return False
 
-    def get_key(self, item):
+    def clear(self):
+        self._container.clear()
+        self._locator.clear()
+
+    @staticmethod
+    def get_key(item):
         if isinstance(item, str):
             return str
         try:
-            return item.__qqkey__()
+            return item.qqkey()
         except AttributeError:
             if isinstance(item, Sequence):
                 if item:
@@ -123,6 +128,3 @@ class IndexedList(MutableSequence):
                     return Mapping
             else:
                 return str
-
-
-
