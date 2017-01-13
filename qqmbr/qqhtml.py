@@ -1,7 +1,7 @@
 # (c) Ilya V. Schurov, 2016
 # Available under MIT license (see LICENSE file in the root folder)
 
-from ml import QqTag
+from qqmbr.ml import QqTag
 from yattag import Doc
 from collections import namedtuple
 import re
@@ -36,8 +36,6 @@ def make_sure_path_exists(path):
             raise
 
 # END FROM
-
-
 
 class Counter():
     """
@@ -497,7 +495,8 @@ ${formatter.format(item, blanks_to_pars=False)}
 
         doc, html, text = Doc().tagtext()
         if tag.exists("_item"):
-            title, labelfield = tag.children_values(not_simple='keep')
+            title, label = tag.children_values(not_simple='keep')
+            # TODO: testme
         else:
             title = tag.value.replace("\n", " ")
             target = self.find_tag_by_flabel(title)

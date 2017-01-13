@@ -3,11 +3,10 @@
 
 import sys, os
 
-sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'qqmbr'))
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 
-from ml import QqParser, QqTag
-from qqhtml import QqHTMLFormatter
-
+from qqmbr.ml import QqParser, QqTag
+from qqmbr.qqhtml import QqHTMLFormatter
 
 import unittest
 from bs4 import BeautifulSoup
@@ -35,7 +34,9 @@ def working_directory(path):
 
 class TestQqHtmlMethods(unittest.TestCase):
     def test_parse_html1(self):
-        parser = QqParser(allowed_tags={'h1', 'h2', 'h3', 'h4', 'eq', 'eqref', 'ref', 'equation', 'label', 'idx'})
+        parser = QqParser(allowed_tags={'h1', 'h2', 'h3', 'h4', 'eq',
+                                        'eqref', 'ref', 'equation',
+                                        'label', 'idx'})
         doc = r"""\h1
     Hello
     \label
@@ -46,6 +47,7 @@ class TestQqHtmlMethods(unittest.TestCase):
         tree = parser.parse(doc)
         html = QqHTMLFormatter(tree)
         s = html.do_format()
+        print(s)
         soup = BeautifulSoup(s, 'html.parser')
 
         #self.assertEqual(s, """<h1 id="label_h1_label"><span class="section__number"><a href="#label_h1_label" class="section__number">1</a></span>Hello

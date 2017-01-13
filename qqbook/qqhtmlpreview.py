@@ -1,8 +1,8 @@
 # (c) Ilya V. Schurov, 2016
 # Available under MIT license (see LICENSE file in the root folder)
 
-from ml import QqParser, QqTag
-from qqhtml import QqHTMLFormatter
+from qqmbr.ml import QqParser, QqTag
+from qqmbr.qqhtml import QqHTMLFormatter
 import odebook
 import os
 import numpy
