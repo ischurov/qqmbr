@@ -259,7 +259,9 @@ For example:
 Here the contents of `pythoncode` tag is 
 
     for i in range(1, 10):
-        print(i)` (note four whitespaces before `print`).
+        print(i)
+
+Note four whitespaces before `print`.
 
 If a line has an indent that is less than *base indent*, it MUST be equal to the indent of one of open block tags. Than 
 all the tags up to that one (including that one) will be closed.
