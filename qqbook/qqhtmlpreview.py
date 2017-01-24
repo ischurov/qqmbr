@@ -3,7 +3,7 @@
 
 from qqmbr.ml import QqParser, QqTag
 from qqmbr.qqhtml import QqHTMLFormatter
-import qqmbr.odebook
+import odebook
 import os
 import numpy
 from flask import Flask, render_template, abort, send_from_directory, url_for, g
@@ -55,6 +55,7 @@ class QqFlaskHTMLFormatter(QqHTMLFormatter):
     def url_for_eq_snippet(self, number):
         return url_for('show_eq', number=number)
 
+
 @app.route('/fig/<path:path>')
 def send_fig(path):
     return send_from_directory('fig', path)
@@ -76,7 +77,7 @@ def show_html(filename):
     parser.allowed_tags.add('idx') # for indexes
     tree = parser.parse(lines)
     formatter.root = tree
-    formatter.pythonfigure_globals.update({'ob': qqmbr.odebook, 'np': numpy})
+    formatter.pythonfigure_globals.update({'ob': odebook, 'np': numpy})
     formatter.code_prefixes['pythonfigure'] += ("import numpy as np\n"
                                                 "import odebook as ob\n"
                                                 "# see https://github.com/ischurov/qqmbr/blob/master/qqmbr/odebook.py"
@@ -140,7 +141,7 @@ def prepare_book():
     parser.include_dir = samplefiles
     tree = parser.parse(lines)
     formatter.root = tree
-    formatter.pythonfigure_globals.update({'ob': qqmbr.odebook, 'np': numpy})
+    formatter.pythonfigure_globals.update({'ob': odebook, 'np': numpy})
     formatter.code_prefixes['pythonfigure'] += ("import numpy as np\n"
                                             "import odebook as ob\n"
                                             "# see https://github.com/ischurov/qqmbr/blob/master/qqmbr/odebook.py"

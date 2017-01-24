@@ -8,7 +8,7 @@ One source, multiple media: HTML, XML, LaTeX, PDF, eBooks, any other. Look below
 ### Highlights
 **qqmbr** is based on **qqDoc** markup. It has the following features:
 
-- Clean syntax. It's a mixture of Python indent-based blocks and LaTeX-style commands beginning with backslash. 
+- Clean syntax. It's a mixture of Python-style indent-based blocks and LaTeX-style commands beginning with backslash. 
 See *complete* [qqDoc syntax description](#markup) below for details.
 - Extensibility. Tags can be anything. LaTeX-style environments like *Theorem 1* or *Lemma 2* or *Definition 3*.
 Figures with captions. Some complicated data that can be used to render something interactive. Everything is a tag.
@@ -128,7 +128,7 @@ to escape it with the same character (like `\\`). You can also escape other spec
 #### Block tags
 Block tags are typed at the beginning of the line, after several spaces that mark *indent* of a tag.  
 Block tag starts with *tag beginning character* and ends with the whitespace or newline character. All the lines below the block tag
-belongs to this tag while their indent is greater than tag's indent. When indent decreases, tag is closed. E.g.
+which indent is greater than tag's indent are appended to the tag. When indent decreases, tag is closed. E.g.
 
     \tag
         Hello
@@ -147,9 +147,9 @@ will be translated into the following XML tree:
     </tag>
     I'm fine
 
-The rest of line where block tag begins will be attached to that tag either, but it will be handled a bit differently
-if it contains other valid block tags or a *separator character*. Every such tag and separator character begins new line.
-Separator character is replaced with \separator tag. For example:
+The rest of a line where block tag begins will be attached to that tag either, but it is handled a bit differently
+if it contains other valid block tags or a *separator character*. Every block tag begins new line.
+For example:
 
     \image \src http://example.com \width 100%
         Some image
@@ -175,16 +175,17 @@ And renders to the following XML:
     Some image
     </image>
 
-Also
+If *separator character* presented, the line is splitted by this character and every part is attached to its own `_item` tag. For example:
 
     \a http://example.com | some example
     
 Is translated to
 
     \a
-        http://example.com
-        \separator
-        some example
+        \_item 
+            http://example.com
+        \_item
+            some example
         
 This allows to add attribute-like subtags in a compact way.
 
@@ -194,7 +195,8 @@ Tag name doesn't necessary should be valid Python identifier, e.g. one can intro
     \#### And I'm header of 4'th level
 
 Tag name cannot contain space-like characters, opening brackets `{` and `[`, separator character (default `|`) 
-and ampresand `&` (as it is used internally to escape special characters).
+and ampresand `&` (as it is used internally to escape special characters). By convention, tag name should not begin with 
+the underscore `_` as it is reserved for internal uses (like `_item` tags).
 
 #### Inline tags
 Inline tags are started with *tag beginning character* and ended by bracket: `{` or `[`. Type of bracket affects the 
@@ -208,12 +210,10 @@ For example,
 
     This is \tag{with some {brackets} inside}
     
-is valid markup: the contents of tag `tag` will be `with some {brackets inside}`.
+is valid markup: the contents of tag `tag` will be `with some {brackets} inside`.
 
 #### Square bracket inline tags
-The content of tags with square brackets are processed just like the first line of block tag: it is splitted by block tags
-and *separator character*, the latter character is replaced with \separator tag, 
-after the split each part is placed on its own line and processed in usual way.
+The content of tags with square brackets are processed just like the first line of a block tag.
 
 For example
 
@@ -229,14 +229,16 @@ Is equivalent to
 
 Another example:
 
-    \ref[Theorem|thm:existence]
+    \ref[Theorem\nonumber|thm:existence]
     
 Is equivalent to
     
     \ref
-        Theorem
-        \separator
-        thm:existence
+        \_item 
+            Theorem
+            \nonumber
+        \_item 
+            thm:existence
  
 There is no difference between block tags and inline tags in terms of resulting tree.
 
@@ -254,7 +256,12 @@ For example:
         for i in range(1, 10):
             print(i)
 
-Here the contents of `pythoncode` tag is `"for i in range(1, 10):\n    print(i)` (note four whitespaces before `print`).
+Here the contents of `pythoncode` tag is 
+
+    for i in range(1, 10):
+        print(i)
+
+Note four whitespaces before `print`.
 
 If a line has an indent that is less than *base indent*, it MUST be equal to the indent of one of open block tags. Than 
 all the tags up to that one (including that one) will be closed.

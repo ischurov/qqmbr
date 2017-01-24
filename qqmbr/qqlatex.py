@@ -5,11 +5,19 @@ class QqLaTeXFormatter(object):
     def __init__(self, root: QqTag=None, allowed_tags=None):
         self.root = root
         self.allowed_tags = allowed_tags or set()
+<<<<<<< HEAD
         self.enumerateable_envs = {name: name.capitalize() for name in ['remark', 'theorem', 'example', 'exercise',
                                                                     'definition', 'proposition', 'lemma',
                                                                         'question', 'corollary']}
         self.tag_to_latex = {'h1':'section', 'h2':'subsection',
                              'h3':'subsubsection', 'h4':'paragraph'}
+=======
+        self.enumerateable_envs = {name: name.capitalize() for name
+                                   in ['remark', 'theorem', 'example',
+                                       'exercise', 'definition',
+                                       'proposition', 'lemma', 'question',
+                                       'corollary']}
+>>>>>>> origin/master
 
     def uses_tags(self):
         return self.allowed_tags
@@ -44,7 +52,8 @@ class QqLaTeXFormatter(object):
         else:
             return ""
 
-    def handle_dummy(self, tag):  # The original 'handle' function we wrote on December 1 (almost)
+    def handle_dummy(self, tag):
+        # The original 'handle' function we wrote on December 1 (almost)
         """
         Parameters
         ----------

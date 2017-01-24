@@ -1,9 +1,14 @@
 # (c) Ilya V. Schurov, 2016
 # Available under MIT license (see LICENSE file in the root folder)
 
-import unittest
+import sys, os
+
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
+
 from qqmbr.ml import QqParser, QqTag
 from qqmbr.qqhtml import QqHTMLFormatter
+
+import unittest
 from bs4 import BeautifulSoup
 import os
 import contextlib
@@ -29,7 +34,9 @@ def working_directory(path):
 
 class TestQqHtmlMethods(unittest.TestCase):
     def test_parse_html1(self):
-        parser = QqParser(allowed_tags={'h1', 'h2', 'h3', 'h4', 'eq', 'eqref', 'ref', 'equation', 'label', 'idx'})
+        parser = QqParser(allowed_tags={'h1', 'h2', 'h3', 'h4', 'eq',
+                                        'eqref', 'ref', 'equation',
+                                        'label', 'idx'})
         doc = r"""\h1
     Hello
     \label
@@ -40,6 +47,7 @@ class TestQqHtmlMethods(unittest.TestCase):
         tree = parser.parse(doc)
         html = QqHTMLFormatter(tree)
         s = html.do_format()
+        print(s)
         soup = BeautifulSoup(s, 'html.parser')
 
         #self.assertEqual(s, """<h1 id="label_h1_label"><span class="section__number"><a href="#label_h1_label" class="section__number">1</a></span>Hello
@@ -104,8 +112,7 @@ See \ref{eq:one} and \ref{eq:two}
         tree = parser.parse(doc)
         html.root = tree
         html.counters['equation'].showparents = False
-        with working_directory("../qqmbr"):
-            s = html.do_format()
+        s = html.do_format()
         soup = BeautifulSoup(s, 'html.parser')
         self.assertEqual(soup.text, "\\[\n\\begin{align}\n\nc^2 &= a^2 + b^2 \n\\tag{1}\n\\\\\n"
                                     "c &= \\sqrt{a^2 + b^2} \n\\tag{2}\n\\\\\n\\end{align}\n\\]\nSee (1) and (2)\n")

@@ -37,8 +37,6 @@ def make_sure_path_exists(path):
 
 # END FROM
 
-
-
 class Counter():
     """
     Very simple class that support latex-style counters with subcounters.
@@ -274,7 +272,6 @@ class QqHTMLFormatter(object):
 
     def format(self, content, blanks_to_pars=True, keep_end_pars=True) -> str:
         """
-
         :param content: could be QqTag or any iterable of QqTags
         :param blanks_to_pars: use blanks_to_pars (True or False)
         :return: str: text of tag
@@ -377,7 +374,27 @@ class QqHTMLFormatter(object):
         :param tag:
         :return:
         """
-        template = Template(filename="templates/math_align.html")
+
+        template = Template(
+            r"""\[
+\begin{align}
+<% items = tag("item") %>
+% if items:
+% for i, item in enumerate(items):
+${formatter.format(item, blanks_to_pars=False)}
+% if item.exists("number"):
+\tag{${item._number.value}}
+% endif
+% if i != len(items):
+\\\
+
+% endif
+% endfor
+% endif
+\end{align}
+\]
+"""
+        )
         return template.render(formatter=self, tag=tag)
 
 
@@ -413,8 +430,7 @@ class QqHTMLFormatter(object):
             prefix = None
             label = tag.value
         else:
-            prefix, labelfield = tag.split_by_sep()
-            label = "".join(labelfield).strip()
+            prefix, label = tag.children_values(not_simple='keep')
 
         number = self.label2number.get(label, "???")
         target = self.label2tag[label]
@@ -425,9 +441,12 @@ class QqHTMLFormatter(object):
                 fromindex = self.tag2chapter(tag)
             else:
                 fromindex = None
-            href = self.url_for_chapter(self.tag2chapter(target), fromindex=fromindex)
+            href = self.url_for_chapter(self.tag2chapter(target),
+                                        fromindex=fromindex)
 
-        eqref = target.name in self.formulaenvs or target.name == 'item' and target.parent.name in self.formulaenvs
+        eqref = (target.name in self.formulaenvs or
+                 target.name == 'item' and
+                 target.parent.name in self.formulaenvs)
 
         if eqref:
             href += "#mjx-eqn-" + str(number)
@@ -473,10 +492,11 @@ class QqHTMLFormatter(object):
         :param tag:
         :return:
         """
+
         doc, html, text = Doc().tagtext()
-        if tag.exists("separator"):
-            title, labelfield = tag.split_by_sep()
-            label = "".join(labelfield)
+        if tag.exists("_item"):
+            title, label = tag.children_values(not_simple='keep')
+            # TODO: testme
         else:
             title = tag.value.replace("\n", " ")
             target = self.find_tag_by_flabel(title)
@@ -837,11 +857,11 @@ class QqHTMLFormatter(object):
         :return:
         """
 
-        granny = tag.get_granny()
+        eva = tag.get_eva()
         headers = self.root("h1")
         i = 0
         for i, header in enumerate(headers, 1):
-            if granny.my_index < header.my_index:
+            if eva.index < header.index:
                 return i - 1
         return i
 
@@ -977,3 +997,7 @@ class QqHTMLFormatter(object):
 
     def handle_rawhtml(self, tag: QqTag):
         return tag.text_content
+
+    ### TODO: Add handle_href
+    # def handle_href(self, tag: QqTag):
+
