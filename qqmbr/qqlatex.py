@@ -1,3 +1,5 @@
+# some comment
+
 from qqmbr.ml import QqTag
 
 class QqLaTeXFormatter(object):
@@ -5,22 +7,37 @@ class QqLaTeXFormatter(object):
     def __init__(self, root: QqTag=None, allowed_tags=None):
         self.root = root
         self.allowed_tags = allowed_tags or set()
-<<<<<<< HEAD
         self.enumerateable_envs = {name: name.capitalize() for name in ['remark', 'theorem', 'example', 'exercise',
                                                                     'definition', 'proposition', 'lemma',
                                                                         'question', 'corollary']}
         self.tag_to_latex = {'h1':'section', 'h2':'subsection',
                              'h3':'subsubsection', 'h4':'paragraph'}
-=======
+
         self.enumerateable_envs = {name: name.capitalize() for name
                                    in ['remark', 'theorem', 'example',
                                        'exercise', 'definition',
                                        'proposition', 'lemma', 'question',
                                        'corollary']}
->>>>>>> origin/master
+
 
     def uses_tags(self):
-        return self.allowed_tags
+        members = inspect.getmembers(self, predicate=inspect.ismethod)
+        handles = [member for member in members if member[0].startswith("handle_") or member[0] == 'preprocess']
+        alltags = set([])
+        for handle in handles:
+            if handle[0].startswith("handle_"):
+                alltags.add(handle[0][len("handle_"):])
+            doc = handle[1].__doc__
+            if not doc:
+                continue
+            for line in doc.splitlines():
+                m = re.search(r"Uses tags:(.+)", line)
+                if m:
+                    tags = m.group(1).split(",")
+                    tags = [tag.strip() for tag in tags]
+                    alltags.update(tags)
+        alltags.update(self.enumerateable_envs.keys())
+        return alltags
 
     def format(self, content) -> str:
         """
