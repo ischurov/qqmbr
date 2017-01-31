@@ -1,3 +1,5 @@
+# another comment
+
 from qqmbr.ml import QqTag
 
 class QqXMLFormatter(object):
