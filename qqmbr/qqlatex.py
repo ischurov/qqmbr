@@ -1,5 +1,4 @@
-# some comment
-
+import inspect
 from qqmbr.ml import QqTag
 
 class QqLaTeXFormatter(object):
