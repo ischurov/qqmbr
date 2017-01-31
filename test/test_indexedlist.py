@@ -20,7 +20,8 @@ class TestIndexedlistMethods(unittest.TestCase):
 
 
     def test_creating_indexedlist2(self):
-        q = IndexedList(['a', 'b'], {'a': 123}, 'a', 123, ['a', 'b', 'c'], ['b', 123], ['a'], {'b': 321})
+        q = IndexedList(['a', 'b'], {'a': 123}, 'a', 123, ['a', 'b', 'c'],
+                        ['b', 123], ['a'], {'b': 321})
         self.assertEqual(repr(q), "IndexedList([['a', 'b'], {'a': 123}, 'a', 123, ['a', 'b', 'c'], ['b', 123], ['a'], {'b': 321}])")
         self.assertEqual(eval(repr(q)), q)
         self.assertEqual(q._directory, {'b': SortedList([5, 7]),
