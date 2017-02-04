@@ -1,7 +1,9 @@
 import inspect
+import re
 from qqmbr.ml import QqTag
+from qqmbr.formatter import QqFormatter
 
-class QqLaTeXFormatter(object):
+class QqLaTeXFormatter(QqFormatter):
 
     def __init__(self, root: QqTag=None, allowed_tags=None):
         self.root = root
@@ -10,33 +12,10 @@ class QqLaTeXFormatter(object):
                                                                     'definition', 'proposition', 'lemma',
                                                                         'question', 'corollary']}
         self.tag_to_latex = {'h1':'section', 'h2':'subsection',
-                             'h3':'subsubsection', 'h4':'paragraph'}
+                                 'h3':'subsubsection', 'h4':'paragraph',
+                                 'paragraph':'paragraph'}
 
-        self.enumerateable_envs = {name: name.capitalize() for name
-                                   in ['remark', 'theorem', 'example',
-                                       'exercise', 'definition',
-                                       'proposition', 'lemma', 'question',
-                                       'corollary']}
-
-
-    def uses_tags(self):
-        members = inspect.getmembers(self, predicate=inspect.ismethod)
-        handles = [member for member in members if member[0].startswith("handle_") or member[0] == 'preprocess']
-        alltags = set([])
-        for handle in handles:
-            if handle[0].startswith("handle_"):
-                alltags.add(handle[0][len("handle_"):])
-            doc = handle[1].__doc__
-            if not doc:
-                continue
-            for line in doc.splitlines():
-                m = re.search(r"Uses tags:(.+)", line)
-                if m:
-                    tags = m.group(1).split(",")
-                    tags = [tag.strip() for tag in tags]
-                    alltags.update(tags)
-        alltags.update(self.enumerateable_envs.keys())
-        return alltags
+        super().__init__()
 
     def format(self, content) -> str:
         """
@@ -58,101 +37,44 @@ class QqLaTeXFormatter(object):
         return "".join(out)
 
     def handle(self, tag):
-        handlers_available = ['h1', 'h2', 'eq', 'paragraph']
         name = tag.name
-        default_handler = 'handle_dummy'
-        if name in handlers_available:
-            return getattr(self, 'handle_'+name)(tag)
+        default_handler = 'handle_simple'
+        if name in self.enumerateable_envs:
+            return getattr(self, 'handle_begin_end')(tag)
+        elif name == 'eq':
+            return getattr(self, 'handle_eq')(tag)
         elif hasattr(self, default_handler):
             return getattr(self, default_handler)(tag)
         else:
             return ""
 
-    def handle_dummy(self, tag):
-        # The original 'handle' function we wrote on December 1 (almost)
+    def handle_simple(self, tag):
         """
-        Parameters
-        ----------
-        tag: QqTag
-
-        Returns "\begin{tag name}
-                    tag content
-                 \end{tag name}
-        -------
-
+        Uses tags: h1, h2, h3, h4, paragraph
+        :param tag:
+        :return:
+            \{tag name}
+            tag content
         """
-        name = tag.name
         return """
-\\begin{{{name}}}
-    {content}
-\end{{{name}}}
-""".format(name=self.name, content=self.format(tag))
+\{{{name}}} \{{{label}}}
+{content}
+""".format(name=self.tag_to_latex[tag.name], content=self.format(tag), label = tag.find('label'))
 
-    def handle_h1(self, tag):  # h1 = chapter
+    def handle_begin_end(self, tag):
         """
-        Parameters
-        ----------
-        tag: QqTag
-
-        Returns "\begin{chapter}
-                    tag content
-                 \end{chapter}
-        -------
-
+        Uses tags: remark, theorem, example, exercise, definition, proposition, lemma, question, corollary
+        :param tag:
+        :return:
+            \begin{tag name}
+            tag content
+            \end{tag name}
         """
         return """
 \\begin{{{name}}}
-    {content}
+{content}
 \end{{{name}}}
-""".format(name="chapter", content=self.format(tag))
-
-    def handle_h2(self, tag):  # h2 = section
-        """
-        Parameters
-        ----------
-        tag: QqTag
-
-        Returns "\begin{section}
-                    tag content
-                 \end{section}
-        -------
-
-        """
-        name = tag.name
-        return """
-\\begin{{{name}}}
-    {content}
-\end{{{name}}}
-""".format(name=self.tag_to_latex[name], content=self.format(tag))
-
-    def handle_paragraph(self, tag):  #paragraph = subsection
-        """
-        Parameters
-        ----------
-        tag: QqTag
-
-        Returns "\begin{subsection}
-                    tag content
-                 \end{subsection}
-        -------
-
-        """
-        name = tag.name
-        print(tag)
-        if tag.find('label'):  #this does not work, but have a look
-            print(tag)
-            label = tag.split('label ')[-1]
-            return """
-\\begin{{{name}}} \label{{{label}}}
-    {content}
-\end{{{name}}}
-""".format(name="subsection", content=self.format(tag), label=label)
-        else:
-            return """
-\\begin{{{name}}}
-    {content}
-\end{{{name}}}
-""".format(name=self.tag_to_latex[name], content=self.format(tag))
+""".format(name=tag.name, content=self.format(tag))
 
     def handle_eq(self, tag: QqTag) -> str:
         """
