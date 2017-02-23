@@ -11,6 +11,7 @@ class QqLaTeXFormatter(QqFormatter):
         self.enumerateable_envs = {name: name.capitalize() for name in ['remark', 'theorem', 'example', 'exercise',
                                                                     'definition', 'proposition', 'lemma',
                                                                         'question', 'corollary']}
+        self.simple_tags = ['h1', 'h2', 'h3', 'h4', 'paragraph']
         self.tag_to_latex = {'h1':'section', 'h2':'subsection',
                                  'h3':'subsubsection', 'h4':'paragraph',
                                  'paragraph':'paragraph'}
@@ -38,15 +39,25 @@ class QqLaTeXFormatter(QqFormatter):
 
     def handle(self, tag):
         name = tag.name
-        default_handler = 'handle_simple'
+        default_handler = 'handle_empty'
         if name in self.enumerateable_envs:
-            return getattr(self, 'handle_begin_end')(tag)
+            return self.handle_begin_end(tag)
+        elif name in self.simple_tags:
+            return self.handle_simple(tag)
         elif name == 'eq':
-            return getattr(self, 'handle_eq')(tag)
+            return self.handle_eq(tag)
         elif hasattr(self, default_handler):
-            return getattr(self, default_handler)(tag)
+            return getattr(self, default_handler)(tag) # I still need gettatr here, right?
         else:
             return ""
+
+    def handle_empty(self, tag):
+        """
+        Uses tags: label
+        :param tag:
+        :return: tag:
+        """
+        return ""
 
     def handle_simple(self, tag):
         """
@@ -56,10 +67,16 @@ class QqLaTeXFormatter(QqFormatter):
             \{tag name}
             tag content
         """
-        return """
-\{{{name}}} \{{{label}}}
+        if len(tag)>0:
+            return """
+\{{{name}}} \label{{{label}}}
 {content}
-""".format(name=self.tag_to_latex[tag.name], content=self.format(tag), label = tag.find('label'))
+""".format(name=self.tag_to_latex[tag.name], content=self.format(tag), label = tag[0])
+        else:
+            return """
+\{{{name}}}
+{content}
+""".format(name=self.tag_to_latex[tag.name], content=self.format(tag))
 
     def handle_begin_end(self, tag):
         """
@@ -70,7 +87,14 @@ class QqLaTeXFormatter(QqFormatter):
             tag content
             \end{tag name}
         """
-        return """
+        if tag.find('label'):
+            return """
+\\begin{{{name}}} \label{{{label}}}
+{content}
+\end{{{name}}}
+""".format(name=tag.name, content=self.format(tag), label = tag.find('label')[0])
+        else:
+            return """
 \\begin{{{name}}}
 {content}
 \end{{{name}}}
