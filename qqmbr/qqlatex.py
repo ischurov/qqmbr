@@ -8,7 +8,7 @@ class QqLaTeXFormatter(QqFormatter):
     def __init__(self, root: QqTag=None, allowed_tags=None):
         self.root = root
         self.allowed_tags = allowed_tags or set()
-        self.enumerateable_envs = {name: name.capitalize() for name in ['remark', 'theorem', 'example', 'exercise',
+        self.enumerable_envs = {name: name.capitalize() for name in ['remark', 'theorem', 'example', 'exercise',
                                                                     'definition', 'proposition', 'lemma',
                                                                         'question', 'corollary']}
         self.simple_tags = ['h1', 'h2', 'h3', 'h4', 'paragraph']
@@ -40,8 +40,8 @@ class QqLaTeXFormatter(QqFormatter):
     def handle(self, tag):
         name = tag.name
         default_handler = 'handle_empty'
-        if name in self.enumerateable_envs:
-            return self.handle_begin_end(tag)
+        if name in self.enumerable_envs:
+            return self.handle_enumerables(tag)
         elif name in self.simple_tags:
             return self.handle_simple(tag)
         elif name == 'eq':
@@ -67,18 +67,19 @@ class QqLaTeXFormatter(QqFormatter):
             \{tag name}
             tag content
         """
+        label_string = ''
+        if tag.exists("label"):
+            label_string = '\label{{{label}}}'.format(label=tag.find('label')[0])
+        caption_string = ''
         if len(tag)>0:
-            return """
-\{{{name}}} \label{{{label}}}
+            caption_string = '{{{caption}}}'.format(caption = tag[0])
+        return """
+\{name}{caption} {label}
 {content}
-""".format(name=self.tag_to_latex[tag.name], content=self.format(tag), label = tag[0])
-        else:
-            return """
-\{{{name}}}
-{content}
-""".format(name=self.tag_to_latex[tag.name], content=self.format(tag))
+""".format(name=self.tag_to_latex[tag.name], content=self.format(tag),
+           label = label_string, caption = caption_string)
 
-    def handle_begin_end(self, tag):
+    def handle_enumerables(self, tag):
         """
         Uses tags: remark, theorem, example, exercise, definition, proposition, lemma, question, corollary
         :param tag:
@@ -87,18 +88,14 @@ class QqLaTeXFormatter(QqFormatter):
             tag content
             \end{tag name}
         """
-        if tag.find('label'):
-            return """
-\\begin{{{name}}} \label{{{label}}}
+        label_string = ''
+        if tag.exists("label"):
+            label_string = '\label{{{label}}}'.format(label=tag.find('label')[0])
+        return """
+\\begin{{{name}}} {label}
 {content}
 \end{{{name}}}
-""".format(name=tag.name, content=self.format(tag), label = tag.find('label')[0])
-        else:
-            return """
-\\begin{{{name}}}
-{content}
-\end{{{name}}}
-""".format(name=tag.name, content=self.format(tag))
+""".format(name=tag.name, content=self.format(tag), label = label_string)
 
     def handle_eq(self, tag: QqTag) -> str:
         """
