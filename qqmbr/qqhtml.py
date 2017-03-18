@@ -40,8 +40,10 @@ def make_sure_path_exists(path):
 class Counter():
     """
     Very simple class that support latex-style counters with subcounters.
-    For example, if new section begins, the enumeration of subsections resets.
-    If `showparents` option is set, str(counter) contains numbers of all its parents
+    For example, if new section begins, the enumeration of subsections
+    resets.
+    If `showparents` option is set, str(counter) contains numbers of all
+    its parents
     That's all.
     """
 
