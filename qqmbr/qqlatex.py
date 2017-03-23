@@ -46,6 +46,8 @@ class QqLaTeXFormatter(QqFormatter):
             return self.handle_simple(tag)
         elif name == 'eq':
             return self.handle_eq(tag)
+        elif name == 'ref':
+            return self.handle_ref(tag)
         elif hasattr(self, default_handler):
             return getattr(self, default_handler)(tag) # I still need gettatr here, right?
         else:
@@ -112,6 +114,18 @@ class QqLaTeXFormatter(QqFormatter):
         return """
 $${content}$$
 """.format(content=self.format(tag))
+
+    def handle_ref(self, tag: QqTag):
+        """
+        Uses tags: ref
+        :param tag:
+        :return: tag:
+        """
+        if tag.is_simple:
+            return """\\ref{{{label}}}""".format(label=tag.value)
+        else:
+            prefix, label = tag.children_values(not_simple='keep')
+            return """{prefix} \\ref{{{label}}}""".format(prefix=prefix, label=label)
 
     def do_format(self):
         return self.format(self.root)

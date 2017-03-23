@@ -26,3 +26,20 @@ class TestQqlatex(unittest.TestCase):
             Some text
         """)
         self.assertEquals(obtained, expected)
+
+
+    def test_cross_reference(self):
+        text = dedent("""\
+            \h1 Proof of \ref[Theorem|thm:main]
+            Some text
+        """)
+        formatter = QqLaTeXFormatter()
+        parser = QqParser(allowed_tags=formatter.uses_tags())
+        tree = parser.parse(text)
+        formatter.root = tree
+        obtained = formatter.format(tree)
+        expected = dedent("""\
+            \section{Proof of Theorem \ref{thm:main}}
+            Some text
+        """)
+        self.assertEquals(obtained, expected)
