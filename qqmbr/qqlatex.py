@@ -57,7 +57,7 @@ class QqLaTeXFormatter(QqFormatter):
         :param tag:
         :return: tag:
         """
-        return ""
+        return self.format(tag)
 
     def handle_simple(self, tag):
         """
@@ -70,13 +70,12 @@ class QqLaTeXFormatter(QqFormatter):
         label_string = ''
         if tag.exists("label"):
             label_string = '\label{{{label}}}'.format(label=tag.find('label')[0])
-        caption_string = ''
-        if len(tag)>0:
-            caption_string = '{{{caption}}}'.format(caption = tag[0])
+        caption_string = self.format(tag)
+        if len(caption_string)>0:
+            caption_string = '{{{caption}}}'.format(caption = caption_string)
         return """
 \{name}{caption} {label}
-{content}
-""".format(name=self.tag_to_latex[tag.name], content=self.format(tag),
+""".format(name=self.tag_to_latex[tag.name],
            label = label_string, caption = caption_string)
 
     def handle_enumerables(self, tag):
