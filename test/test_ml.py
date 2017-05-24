@@ -398,6 +398,20 @@ Hello
                          ]
                          )
 
+    def test_special_inline_mode_at_first_line(self):
+        doc = r"""\blocktag Some \inlinetag[Hello \blocktag test]"""
+        parser = QqParser(allowed_tags={'inlinetag', 'blocktag'})
+        tree = parser.parse(doc)
+        print(tree.as_list())
+
+    def test_special_inline_mode_block_tag_beginning_of_line(self):
+        doc = r"""Some \inlinetag[Hello \blocktag test
+\blocktag another test]"""
+        parser = QqParser(allowed_tags={'inlinetag', 'blocktag'})
+        tree = parser.parse(doc)
+        print(tree.as_list())
+
+
     def test_empty_special_tag(self):
         doc = r"""\blocktag
     Some \empty[

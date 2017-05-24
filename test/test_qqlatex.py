@@ -12,7 +12,7 @@ import unittest
 
 class TestQqlatex(unittest.TestCase):
     def test_section(self):
-        text = dedent("""\
+        text = dedent(r"""\
             \h1 Section Two
             Some text
         """)
@@ -21,7 +21,7 @@ class TestQqlatex(unittest.TestCase):
         tree = parser.parse(text)
         formatter.root = tree
         obtained = formatter.format(tree)
-        expected = dedent("""\
+        expected = dedent(r"""\
             \section{Section Two}
             Some text
         """)
@@ -29,7 +29,7 @@ class TestQqlatex(unittest.TestCase):
 
 
     def test_cross_reference(self):
-        text = dedent("""\
+        text = dedent(r"""\
             \h1 Proof of \ref[Theorem|thm:main]
             Some text
         """)
@@ -38,7 +38,7 @@ class TestQqlatex(unittest.TestCase):
         tree = parser.parse(text)
         formatter.root = tree
         obtained = formatter.format(tree)
-        expected = dedent("""\
+        expected = dedent(r"""\
             \section{Proof of Theorem \ref{thm:main}}
             Some text
         """)
