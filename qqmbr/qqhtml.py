@@ -1,7 +1,7 @@
 # (c) Ilya V. Schurov, 2016
 # Available under MIT license (see LICENSE file in the root folder)
 
-from qqmbr.ml import QqTag
+from indentml.parser import QqTag
 from yattag import Doc
 from collections import namedtuple
 import re

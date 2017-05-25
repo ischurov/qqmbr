@@ -5,7 +5,7 @@ import sys, os
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 
-from qqmbr.ml import QqParser, QqTag
+from indentml.parser import QqParser, QqTag
 from qqmbr.qqhtml import QqHTMLFormatter
 
 import unittest

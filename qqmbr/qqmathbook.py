@@ -1,12 +1,13 @@
 # (c) Ilya V. Schurov, 2016
 # Available under MIT license (see LICENSE file in the root folder)
 
-from qqmbr.ml import QqParser, QqTag
+from indentml.parser import QqParser, QqTag
 from qqmbr.qqhtml import QqHTMLFormatter
 import qqmbr.odebook as odebook
 import os
 import numpy
-from flask import Flask, render_template, abort, send_from_directory, url_for, g
+from flask import (Flask, render_template, abort, send_from_directory,
+                   url_for, g)
 from subprocess import Popen, PIPE, STDOUT
 from bs4 import BeautifulSoup
 import hashlib
@@ -193,7 +194,6 @@ def show_chapter(index=None, label=None):
 
     tree, formatter = prepare_book()
 
-
     if index is None:
         index = formatter.label2chapter[label]
     #for x in formatter.chapters[index].content:
@@ -292,24 +292,35 @@ def mathjax(s):
 
     return style, body
 
-if __name__ == "__main__":
+commands = {}
+
+def register_command(f):
+    commands[f.__name__] = f
+    return f
+
+@register_command
+def preview():
     app.run()
+
+@register_command
+def build():
+    app.config['mathjax_node'] = True
+
+    freezer = Freezer(app)
+    app.config['FREEZER_BASE_URL'] = 'http://math-info.hse.ru/odebook/'
+    app.config['MATHJAX_ALLTHEBOOK'] = True
+    app.config['FREEZER_DESTINATION'] = os.path.join(curdir, "build")
+    freezer.freeze()
 
 def main():
     argparser = argparse.ArgumentParser()
     argparser.add_argument("command",
                            help="command to invoke: preview or build")
     args = argparser.parse_args()
-    if args.command == 'preview':
-        app.run()
-    elif args.command == 'build':
-        app.config['mathjax_node'] = True
-
-        freezer = Freezer(app)
-        app.config['FREEZER_BASE_URL'] = 'http://math-info.hse.ru/odebook/'
-        app.config['MATHJAX_ALLTHEBOOK'] = True
-        app.config['FREEZER_DESTINATION'] = os.path.join(curdir, "build")
-        freezer.freeze()
+    if args.command in commands:
+        commands[args.command]()
     else:
-        print("Unkown command or no command provided")
+        print("Unkown command " + args.command)
 
+if __name__ == "__main__":
+    preview()

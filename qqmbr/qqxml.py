@@ -1,6 +1,6 @@
 # another comment
 
-from qqmbr.ml import QqTag
+from indentml.parser import QqTag
 
 class QqXMLFormatter(object):
 
