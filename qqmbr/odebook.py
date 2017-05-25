@@ -292,6 +292,6 @@ def mcontour(xs, ys, fs, levels=None, **kw):
     x,y=np.meshgrid(xs,ys)
     z=fs(x,y)
     if levels!=None:
-        plt.contour(x,y,z,levels,**kw)
+        plt.contour(x,y,z,sorted(set(levels)),**kw)
     else:
         plt.contour(x,y,z,**kw)

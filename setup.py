@@ -28,7 +28,7 @@ setup(
     # https://packaging.python.org/en/latest/single_source_version.html
     version='0.1.0',
 
-    description=('qqmbr is a documentation system based on .qq'
+    description=('qqmbr is a documentation system based on .qq '
                  'indent-based file format'),
     long_description=long_description,
 
@@ -83,7 +83,8 @@ setup(
     # requirements files see:
     # https://packaging.python.org/en/latest/requirements.html
     install_requires=['sortedcontainers', 'yattag', 'mako', 
-            'fuzzywuzzy', 'matplotlib', 'flask', 'beautifulsoup4'],
+            'fuzzywuzzy', 'matplotlib', 'flask', 'beautifulsoup4',
+                      'frozen-flask', 'python-Levenshtein'],
 
     # List additional groups of dependencies here (e.g. development
     # dependencies). You can install these using the following syntax,
@@ -110,9 +111,9 @@ setup(
     # To provide executable scripts, use entry points in preference to the
     # "scripts" keyword. Entry points provide cross-platform support and allow
     # pip to create the appropriate form of executable for the target platform.
-    #    entry_points={
-    #        'console_scripts': [
-    #            'sample=sample:main',
-    #        ],
-    #    },
+    entry_points={
+        'console_scripts': [
+            'qqmathbook=qqmbr.qqmathbook:main',
+        ],
+    },
 )

@@ -106,6 +106,10 @@ class QqHTMLFormatter(object):
 
     def __init__(self, root: QqTag=None):
 
+        self.templates_dir = os.path.join(
+            os.path.dirname(os.path.realpath(__file__)),
+            "templates")
+
         self.label2number = {}
         self.label2title = {}
         self.label2tag = {}
@@ -159,7 +163,7 @@ class QqHTMLFormatter(object):
             self.counters[env] = self.counters['h1'].spawn_child()
             self.counters[env].showparents = False
 
-        self.figures_dir = "fig"
+        self.figures_dir = None
 
         self.default_figname = "fig"
 
@@ -992,7 +996,8 @@ ${formatter.format(item, blanks_to_pars=False)}
         """
         if not tag.exists('md5id'):
             tag.append_child(QqTag('md5id', [self.tag_hash_id(tag)]))
-        template = Template(filename="templates/quiz.html")
+        template = Template(filename=os.path.join(self.templates_dir,
+                                                  "quiz.html"))
         return template.render(formatter=self, tag=tag)
 
     def handle_rawhtml(self, tag: QqTag):

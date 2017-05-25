@@ -355,6 +355,8 @@ class QqTag(MutableSequence):
                          "to tweak the behavior").format(child))
                 if not_simple == 'none':
                     values.append(None)
+                if not_simple == 'keep':
+                    values.append(child)
                 # if not_simple == 'skip': pass
         return values
 

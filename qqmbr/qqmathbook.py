@@ -3,7 +3,7 @@
 
 from qqmbr.ml import QqParser, QqTag
 from qqmbr.qqhtml import QqHTMLFormatter
-import odebook
+import qqmbr.odebook as odebook
 import os
 import numpy
 from flask import Flask, render_template, abort, send_from_directory, url_for, g
@@ -11,9 +11,19 @@ from subprocess import Popen, PIPE, STDOUT
 from bs4 import BeautifulSoup
 import hashlib
 import itertools
+import argparse
+from flask_frozen import Freezer
+
+scriptdir = os.path.dirname(os.path.realpath(__file__))
+curdir = os.getcwd()
+
+print(scriptdir)
 
 app = Flask(__name__, static_url_path='')
-app.config['page2html'] = '../third-party/node_modules/mathjax-node/bin/page2html'
+
+app.config['mjpage'] = os.path.join(
+    scriptdir, '../third-party/node_modules/mathjax-node-page/bin/mjpage')
+
 app.config['preamble'] = r"""
 <div style='visibility: hidden; display: none;'>
 \[
@@ -40,6 +50,11 @@ app.debug = True
 allthebook = None
 
 class QqFlaskHTMLFormatter(QqHTMLFormatter):
+
+    def __init__(self):
+        super().__init__()
+        self.figures_dir = os.path.join(curdir, "fig")
+
     def url_for_chapter_by_index(self, index):
         return url_for('show_chapter_by_index', index=index)
 
@@ -58,28 +73,30 @@ class QqFlaskHTMLFormatter(QqHTMLFormatter):
 
 @app.route('/fig/<path:path>')
 def send_fig(path):
-    return send_from_directory('fig', path)
+    return send_from_directory(os.path.join(curdir, 'fig'), path)
 
 @app.route('/assets/<path:path>')
 def send_asset(path):
-    return send_from_directory('assets', path)
+    return send_from_directory(os.path.join(scriptdir, 'assets'), path)
 
 @app.route("/preview/<filename>")
 def show_html(filename):
-    path = os.path.join("samplefiles",filename)
+    path = filename
     if not os.path.isfile(path):
         abort(404)
     with open(path) as f:
         lines = f.readlines()
     parser = QqParser()
+
     formatter = QqFlaskHTMLFormatter()
+
     parser.allowed_tags.update(formatter.uses_tags())
     parser.allowed_tags.add('idx') # for indexes
     tree = parser.parse(lines)
     formatter.root = tree
     formatter.pythonfigure_globals.update({'ob': odebook, 'np': numpy})
     formatter.code_prefixes['pythonfigure'] += ("import numpy as np\n"
-                                                "import odebook as ob\n"
+                                                "import qqmbr.odebook as ob\n"
                                                 "# see https://github.com/ischurov/qqmbr/blob/master/qqmbr/odebook.py"
                                                 "\n\n")
 
@@ -88,24 +105,27 @@ def show_html(filename):
 
     formatter.counters['h1'].value = 2
     html = formatter.do_format()
-    return render_template("preview.html", html=html, title=tree._h1.text_content, toc=formatter.mk_toc())
+    return render_template("preview.html", html=html,
+                           title=tree._h1.text_content,
+                           toc=formatter.mk_toc(),
+                           rootdir=app.config.get('ROOTDIR'))
 
-@app.route("/simple-preview/<filename>")
-def simple_show_html(filename):
-    path = os.path.join("samplefiles",filename)
-    if not os.path.isfile(path):
-        abort(404)
-    with open(path) as f:
-        lines = f.readlines()
-    parser = QqParser()
-    formatter = QqFlaskHTMLFormatter()
-    parser.allowed_tags.update(formatter.uses_tags())
-    parser.allowed_tags.add('idx') # for indexes
-    tree = parser.parse(lines)
-    formatter.root = tree
-    formatter.counters['h1'].value = 2
-    html = formatter.do_format()
-    return render_template("preview.html", html=html, title=tree._h1.text_content)
+# @app.route("/simple-preview/<filename>")
+# def simple_show_html(filename):
+#     path = os.path.join("samplefiles",filename)
+#     if not os.path.isfile(path):
+#         abort(404)
+#     with open(path) as f:
+#         lines = f.readlines()
+#     parser = QqParser()
+#     formatter = QqFlaskHTMLFormatter()
+#     parser.allowed_tags.update(formatter.uses_tags())
+#     parser.allowed_tags.add('idx') # for indexes
+#     tree = parser.parse(lines)
+#     formatter.root = tree
+#     formatter.counters['h1'].value = 2
+#     html = formatter.do_format()
+#     return render_template("preview.html", html=html, title=tree._h1.text_content)
 
 @app.route("/eq/<number>/")
 def show_eq(number):
@@ -128,22 +148,22 @@ def show_allthebook():
     return render_template("preview.html", html=allthebook)
 
 def prepare_book():
-    samplefiles = "samplefiles"
-    path = os.path.join(samplefiles, 'thebook.qq')
+    path = os.path.join(curdir, 'index.qq')
     if not os.path.isfile(path):
         abort(404)
     with open(path) as f:
         lines = f.readlines()
     parser = QqParser()
     formatter = QqFlaskHTMLFormatter()
+
     parser.allowed_tags.update(formatter.uses_tags())
     parser.allowed_tags.add('idx') # for indexes
-    parser.include_dir = samplefiles
+    parser.include_dir = curdir
     tree = parser.parse(lines)
     formatter.root = tree
     formatter.pythonfigure_globals.update({'ob': odebook, 'np': numpy})
     formatter.code_prefixes['pythonfigure'] += ("import numpy as np\n"
-                                            "import odebook as ob\n"
+                                            "import qqmbr.odebook as ob\n"
                                             "# see https://github.com/ischurov/qqmbr/blob/master/qqmbr/odebook.py"
                                             "\n\n")
 
@@ -247,7 +267,16 @@ def mathjax_if_needed(s):
     return mathjax(preamble + s)
 
 def mathjax(s):
-    p = Popen([app.config['page2html']], stdout=PIPE, stdin=PIPE, stderr=PIPE)
+    with open("temp.log", "w") as f:
+        f.write(s)
+
+    p = Popen([app.config['mjpage'],
+              '--dollars',
+               '--output', "CommonHTML",
+               '--fontURL',
+               ("https://cdnjs.cloudflare.com/ajax/libs/"
+                "mathjax/2.7.0/fonts/HTML-CSS")], stdout=PIPE, stdin=PIPE,
+              stderr=PIPE)
 
     #filename = hashlib.sha256(s.encode('utf-8')).hexdigest()
     #with open(filename, 'w') as f:
@@ -265,3 +294,22 @@ def mathjax(s):
 
 if __name__ == "__main__":
     app.run()
+
+def main():
+    argparser = argparse.ArgumentParser()
+    argparser.add_argument("command",
+                           help="command to invoke: preview or build")
+    args = argparser.parse_args()
+    if args.command == 'preview':
+        app.run()
+    elif args.command == 'build':
+        app.config['mathjax_node'] = True
+
+        freezer = Freezer(app)
+        app.config['FREEZER_BASE_URL'] = 'http://math-info.hse.ru/odebook/'
+        app.config['MATHJAX_ALLTHEBOOK'] = True
+        app.config['FREEZER_DESTINATION'] = os.path.join(curdir, "build")
+        freezer.freeze()
+    else:
+        print("Unkown command or no command provided")
+
