@@ -84,7 +84,8 @@ setup(
     # https://packaging.python.org/en/latest/requirements.html
     install_requires=['indentml', 'yattag', 'mako',
             'fuzzywuzzy', 'matplotlib', 'flask', 'beautifulsoup4',
-                      'frozen-flask', 'python-Levenshtein'],
+                      'frozen-flask', 'python-Levenshtein', 'scipy',
+                      'plotly'],
 
     # List additional groups of dependencies here (e.g. development
     # dependencies). You can install these using the following syntax,
