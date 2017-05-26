@@ -18,6 +18,8 @@
 You can look at my Lecture Notes on ODE sources (see e.g. [this qqDoc source](https://github.com/ischurov/odebook/blob/master/chapter03.qq) and 
 [its HTML render](http://math-info.hse.ru/f/2015-16/nes-ode/chapter03.html), in Russian) or at the [code sample](#code-sample) below.
 
+You can also play with limited subset of **qqmbr** features in [live demo](http://math-info.hse.ru/qqmathpreview).
+
 ### Inspiration
 **qqmbr** was inspired by various projects and conceptions:
 
@@ -39,7 +41,7 @@ You are welcome to participate with pull requests and issue-reporting.
 
 ### Code sample
 
-This is an example of **qqmbr** markup.
+This is an example of **qqmbr** markup. See [live demo](http://math-info.hse.ru/qqmathpreview).
 
     \h1 Euler's formula
     \h2 Complex numbers \label sec:comlex
