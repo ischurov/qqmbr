@@ -41,7 +41,8 @@ def render():
 
 @app.route('/')
 def showform():
-    return render_template("preview_form.html")
+    return render_template("preview_form.html",
+                           rootdir=app.config["APPLICATION_ROOT"])
 
 
 if __name__ == '__main__':
