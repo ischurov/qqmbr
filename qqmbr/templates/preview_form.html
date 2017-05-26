@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>qqmbr preview</title>
+
+    <script   src="https://code.jquery.com/jquery-3.2.1.min.js"   integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4="   crossorigin="anonymous"></script>
+
+    <!-- Latest compiled and minified CSS -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
+
+    <!-- Optional theme -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap-theme.min.css" integrity="sha384-rHyoN1iRsVXV4nD0JutlnGaslCJuC7uwjduW9SVrLvRYooPp2bWYgmgJQIXwl/Sp" crossorigin="anonymous">
+
+    <!-- Latest compiled and minified JavaScript -->
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
+
+    <script src="{{ rootdir | default("") }}/assets/js/codemirror/lib/codemirror.js"></script>
+
+    <link rel="stylesheet" href="/assets/js/codemirror/lib/codemirror.css">
+    <link rel="stylesheet" href="/assets/js/codemirror/theme/eclipse.css">
+
+<script src="{{ rootdir | default("") }}/assets/js/codemirror/mode/stex/stex.js"></script>
+    <style>
+        .CodeMirror {
+            border: 1px solid lightgray;
+            margin-top: 1em;
+            height: 90vh;
+        }
+
+        span.env-title, span.paragraph {
+            font-weight: bold;
+        }
+
+        span.section__number {
+            float: right;
+            color: #aaaaaa;
+            margin-left: 2em;
+        }
+
+        a.section__number {
+            color: #aaaaaa;
+        }
+
+        #output {
+            overflow-y: scroll;
+            height: 90vh;
+            border: 1px solid lightgray;
+            margin-top: 1em;
+        }
+    </style>
+    <script src="{{ rootdir | default("") }}/assets/js/mathjax/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <script type="text/x-mathjax-config">
+  MathJax.Hub.Config({
+    extensions: ["tex2jax.js"],
+    jax: ["input/TeX", "output/HTML-CSS"],
+    tex2jax: {
+      inlineMath: [ ['$','$'], ["\\(","\\)"] ],
+      displayMath: [ ["\\[","\\]"] ],
+      processEscapes: true
+    },
+    "HTML-CSS": { availableFonts: ["TeX"] }
+  });
+</script>
+</head>
+<script>
+
+</script>
+<body>
+<div class="container">
+    <div class="row">
+        <div class="col-md-6">
+            <form>
+                <textarea name="text" cols="100" id="code">\h1 Euler's formula
+\h2 Complex numbers \label sec:comlex
+
+One can introduce \em{complex numbers} by considering so-called \em{imaginary unit} $i$, such that:
+\equation \label eq:i
+    i^2 = -1.
+\definition
+    \emph{Complex number} is a number of a form $x+iy$, where $x, y \in \mathbb R$.
+
+\h2 Exponent of complex number \label sec:exp
+\theorem \label thm:1
+    Let $x$ be real number. Then
+    \equation \label eq:main
+        e^{ix} = \cos x+i\sin x.
+\proof
+    Let us recall series for exponent, sine and cosine:
+    \align
+        \item \label eq:series-exp
+            e^z &= 1 + z + \frac{z^2}{2} + \frac{z^3}{3!} + \ldots = \sum_{k=0}^\infty \frac{z^k}{k!}
+        \item \label eq:series-sin
+            \sin z &= z - \frac{z^3}{3!} + \frac{z^5}{5!} - \frac{z^7}{7!} + \ldots
+        \item \label eq:series-cos
+            \cos z &= 1 - \frac{z^2}{2} +\frac{z^4}{4!} - \frac{z^6}{6!} + \ldots
+    It follows from \ref{eq:i} that
+    \eq
+        i^k=\begin{cases}
+            1 & \text{for } k = 4m\\\\
+            i & \text{for } k = 4m+1\\\\
+            -1 & \text{for } k = 4m+2\\\\
+            -i & \text{for } k = 4m+3
+            \end{cases}
+    Let us put $z=ix$ into \ref{eq:series-exp}. For even $k$, $(ix)^k$ is real and for odd $k$ it is imaginary. Moreover, the sign alternates when one pass to the next term. It follows immediately that the real part of \ref{eq:series-exp} is equal to \ref{eq:series-sin} and the imaginary part is equal to \ref{eq:series-cos} with substitution $z=ix$.
+
+    This finished the proof of \ref[Euler's formula\nonumber|thm:1].
+
+\h1 Corollary
+
+It follows from \ref[Theorem|thm:1] from \ref[Section|sec:exp] that
+\eq
+    \sin x = \frac{e^{ix}-e^{-ix}}{2i}.
+Therefore,
+\align
+    \item \nonumber
+        \sin 2x &= \frac{e^{2ix}-e^{-2ix}}{2i} = \frac{1}{2i}((e^{ix})^2-(e^{-ix})^2)=
+    \item \nonumber
+        &\frac{1}{2i}(e^{ix}-e^{-ix})(e^{ix}+e^{-ix})=2\sin x \cos x.
+
+\question
+    Express $\cos x$ in terms of exponents. (Click on pencil to check the correct answer.)
+    \quiz
+        \choice
+            $(e^{ix}+e^{-ix})/(2i)$
+            \comment
+                No, this is complex number!
+        \choice \correct
+            $(e^{ix}+e^{-ix})/2$
+            \comment
+                Yes! That's right!
+        \choice
+            $(e^{ix}-e^{-ix}))/(2)$
+            \comment
+                No, that's $-i\sin x$.
+
+\exercise
+    Express $\cos 2x$ in terms of $\sin x$ and $\cos x$.
+    </textarea>
+                <button id="btn_preview" type="button">preview</button>
+            </form>
+        </div>
+        <div class="col-md-6" id="output" >
+
+        </div>
+    </div>
+    <div class="page-footer">
+        <span style="font-size:70%">Live qqmath example.
+            Powered by <a href="https://github.com/ischurov/qqmbr">qqmbr</a> &
+            <a href="https://github.com/ischurov/indentml">indentml</a>, © Ilya V. Schurov, 2017.</span>
+    </div>
+</div>
+<script>
+    $(function(){
+        var myTextArea = $("#code")[0];
+        var myCodeMirror = CodeMirror.fromTextArea(myTextArea,
+            {
+                indentWithTabs: false,
+                indentUnit: 4,
+                extraKeys: {
+                // FROM: https://github.com/codemirror/CodeMirror/issues/988#issuecomment-14921785
+                     Tab: function(cm) {
+                        if (cm.somethingSelected()) {
+                            cm.indentSelection("add");
+                        } else {
+                            cm.replaceSelection(cm.getOption("indentWithTabs")? "\t":
+                              Array(cm.getOption("indentUnit") + 1).join(" "), "end", "+input");
+                        }
+                     }
+                // END FROM
+                },
+                lineWrapping: true,
+                theme: "eclipse"
+            }
+        );
+        var charWidth = myCodeMirror.defaultCharWidth(), basePadding = 4;
+        myCodeMirror.on("renderLine", function(cm, line, elt) {
+            var off = CodeMirror.countColumn(line.text, null, cm.getOption("tabSize")) * charWidth;
+            elt.style.textIndent = "-" + off + "px";
+            elt.style.paddingLeft = (basePadding + off) + "px";
+        });
+        myCodeMirror.refresh();
+
+        function mkpreview() {
+            text = myCodeMirror.getValue();
+            console.log(text);
+            $.ajax(
+                {
+                    url: "{{ url_for('render') }}",
+                    data: {text: text},
+                    success: function(result) {
+                        if (!result.error) {
+                            $("#output").html(result.output);
+                            MathJax.Hub.Queue(["Typeset",MathJax.Hub]);
+                        }
+                    }
+                });
+            }
+
+        auto_update = null;
+        function plan_auto_update(delay){
+            if (auto_update) {
+                clearTimeout(auto_update)
+            }
+            auto_update = setTimeout(mkpreview, delay)
+        }
+
+        myCodeMirror.on("change", plan_auto_update.bind(null, 1000));
+
+        $("#btn_preview").on('click', mkpreview);
+        mkpreview();
+
+    })
+</script>
+</body>
+</html>

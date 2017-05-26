@@ -11,6 +11,7 @@ import os
 import urllib.parse
 from mako.template import Template
 from fuzzywuzzy import process
+import html
 
 import matplotlib
 matplotlib.use('Agg')
@@ -40,8 +41,10 @@ def make_sure_path_exists(path):
 class Counter():
     """
     Very simple class that support latex-style counters with subcounters.
-    For example, if new section begins, the enumeration of subsections resets.
-    If `showparents` option is set, str(counter) contains numbers of all its parents
+    For example, if new section begins, the enumeration of subsections
+    resets.
+    If `showparents` option is set, str(counter) contains numbers of all
+    its parents
     That's all.
     """
 
@@ -87,8 +90,9 @@ class PlotlyPlotter(object):
 
     def plot(self, figure_or_data):
         self.buffer.append(
-            plotly.offline.plot(figure_or_data, show_link=False, validate=True,
-                                output_type='div', include_plotlyjs=False)
+            plotly.offline.plot(figure_or_data, show_link=False,
+                                validate=True, output_type='div',
+                                include_plotlyjs=False)
         )
         PlotlyPlotter._first = False
 
@@ -135,11 +139,15 @@ class QqHTMLFormatter(object):
         self.counters['item'] = {'align': self.counters['equation']}
         self.counters['figure'] = self.counters['h1'].spawn_child()
 
-        self.enumerateable_envs = {name: name.capitalize() for name in ['remark', 'theorem', 'example', 'exercise',
-                                                                        'definition', 'proposition', 'lemma',
-                                                                        'question', 'corollary']}
+        self.enumerateable_envs = {name: name.capitalize()
+                                   for name in ['remark', 'theorem',
+                                                'example', 'exercise',
+                                                'definition',
+                                                'proposition', 'lemma',
+                                                'question', 'corollary']}
 
-        # You can make self.localnames = {} to use plain English localization
+        # You can make self.localnames = {} to use
+        # plain English localization
 
         self.localnames = {
             'Remark': 'Замечание',
@@ -170,12 +178,16 @@ class QqHTMLFormatter(object):
         plt.rcParams['figure.figsize'] = (6, 4)
 
         self.pythonfigure_globals = {'plt': plt}
-        self.code_prefixes = {'pythonfigure': 'import matplotlib.pyplot as plt\n',
-                              'plotly': ("import plotly\n"
-                                        "import plotly.graph_objs as go\n"
-                                        "from plotly.offline import iplot as plot\n"
-                                        "from plotly.offline import init_notebook_mode\n\n"
-                                        "init_notebook_mode()\n\n")}
+        self.code_prefixes = {'pythonfigure':
+                                  'import matplotlib.pyplot as plt\n',
+                              'plotly':
+                                  ("import plotly\n"
+                                   "import plotly.graph_objs as go\n"
+                                   "from plotly.offline import iplot "
+                                   "as plot\n"
+                                   "from plotly.offline import "
+                                   "init_notebook_mode\n\n"
+                                   "init_notebook_mode()\n\n")}
 
         self.plotly_plotter = PlotlyPlotter()
 
@@ -186,6 +198,19 @@ class QqHTMLFormatter(object):
         self.js_bottom = {}
         self.js_onload = {}
 
+        self.safe_tags = (set(self.enumerateable_envs) |
+                          set(self.formulaenvs) |
+                          {'h1', 'h2', 'h3', 'h4',
+                           'item', 'figure', 'label',
+                           'number', 'ref', 'nonumber',
+                           'snref', 'snippet', 'flabel',
+                           'name', 'proof', 'outline', 'of',
+                           'caption', 'showcode', 'collapsed',
+                           'hidden', 'backref', 'label', 'em',
+                           'emph', 'quiz', 'choice', 'correct',
+                           'comment'})
+
+
     def url_for_figure(self, s):
         """
         Override it to use flask.url_for
@@ -194,7 +219,8 @@ class QqHTMLFormatter(object):
         """
         return "/fig/" + s
 
-    def make_python_fig(self, code: str, exts=('pdf', 'svg'), tight_layout=True):
+    def make_python_fig(self, code: str, exts=('pdf', 'svg'),
+                        tight_layout=True):
         if isinstance(exts, str):
             exts = (exts, )
         hashsum = hashlib.md5(code.encode('utf8')).hexdigest()
@@ -202,7 +228,8 @@ class QqHTMLFormatter(object):
         path = os.path.join(self.figures_dir, prefix, hashsum)
         needfigure = False
         for ext in exts:
-            if not os.path.isfile(os.path.join(path, self.default_figname + "." + ext)):
+            if not os.path.isfile(os.path.join(
+                    path, self.default_figname + "." + ext)):
                 needfigure = True
                 break
 
@@ -215,7 +242,8 @@ class QqHTMLFormatter(object):
             if tight_layout:
                 plt.tight_layout()
             for ext in exts:
-                plt.savefig(os.path.join(path, self.default_figname + "." + ext))
+                plt.savefig(os.path.join(
+                    path, self.default_figname + "." + ext))
         return os.path.join(prefix, hashsum)
 
     def make_plotly_fig(self, code):
@@ -223,16 +251,21 @@ class QqHTMLFormatter(object):
         if plotly is None:
             import plotly
         loc = {}
-        self.plotly_globals.update({'plot': self.plotly_plotter.plot, 'go': plotly.graph_objs, 'plotly': plotly})
+        self.plotly_globals.update({'plot': self.plotly_plotter.plot,
+                                    'go': plotly.graph_objs,
+                                    'plotly': plotly})
 
         gl = self.plotly_globals
         exec(code, gl, loc)
-        self.js_top['plotly'] = "<script src='https://cdn.plot.ly/plotly-latest.min.js'></script>"
+        self.js_top['plotly'] = ("<script src='https://cdn.plot.ly/plotly-"
+                                 "latest.min.js'></script>")
         return self.plotly_plotter.get_data()
 
     def uses_tags(self):
         members = inspect.getmembers(self, predicate=inspect.ismethod)
-        handles = [member for member in members if member[0].startswith("handle_") or member[0] == 'preprocess']
+        handles = [member for member in members
+                   if member[0].startswith("handle_") or
+                      member[0] == 'preprocess']
         alltags = set([])
         for handle in handles:
             if handle[0].startswith("handle_"):
@@ -274,10 +307,12 @@ class QqHTMLFormatter(object):
     def label2id(self, label):
         return "label_" + mk_safe_css_ident(label.strip())
 
-    def format(self, content, blanks_to_pars=True, keep_end_pars=True) -> str:
+    def format(self, content, blanks_to_pars=True,
+               keep_end_pars=True) -> str:
         """
         :param content: could be QqTag or any iterable of QqTags
         :param blanks_to_pars: use blanks_to_pars (True or False)
+        :param keep_end_pars: keep end paragraphs
         :return: str: text of tag
         """
         if content is None:
@@ -288,9 +323,10 @@ class QqHTMLFormatter(object):
         for child in content:
             if isinstance(child, str):
                 if blanks_to_pars:
-                    out.append(self.blanks_to_pars(child, keep_end_pars))
+                    out.append(self.blanks_to_pars(html.escape(
+                        child, keep_end_pars)))
                 else:
-                    out.append(child)
+                    out.append(html.escape(child))
             else:
                 out.append(self.handle(child))
         return "".join(out)
@@ -313,9 +349,10 @@ class QqHTMLFormatter(object):
             doc.attr(id=self.tag_id(tag))
             if tag.find("number"):
                 with html("span", klass="section__number"):
-                    with html("a", href="#"+self.tag_id(tag), klass="section__number"):
+                    with html("a", href="#"+self.tag_id(tag),
+                              klass="section__number"):
                         text(tag._number.value)
-            text(self.format(tag, blanks_to_pars=False))
+            doc.asis(self.format(tag, blanks_to_pars=False))
         ret = doc.getvalue()
         if tag.next() and isinstance(tag.next(), str):
             ret += "<p>"
@@ -324,7 +361,8 @@ class QqHTMLFormatter(object):
 
     def handle_eq(self, tag: QqTag) -> str:
         """
-        eq tag corresponds to \[ \] or $$ $$ display formula without number.
+        eq tag corresponds to \[ \] or $$ $$ display formula
+        without number.
 
         Example:
 
@@ -337,7 +375,7 @@ class QqHTMLFormatter(object):
         doc, html, text = Doc().tagtext()
         with html("div", klass="latex_eq"):
             text("\\[\n")
-            text(self.format(tag, blanks_to_pars=False))
+            doc.asis(self.format(tag, blanks_to_pars=False))
             text("\\]\n")
         return doc.getvalue()
 
@@ -361,7 +399,7 @@ class QqHTMLFormatter(object):
                 text("\\tag{{{}}}\n".format(tag._number.value))
             if tag.find('label'):
                 doc.attr(id=self.label2id(tag._label.value))
-            text(self.format(tag, blanks_to_pars=False))
+            doc.asis(self.format(tag, blanks_to_pars=False))
             text("\\end{equation}\n")
             text("\\]\n")
         return doc.getvalue()
@@ -401,7 +439,6 @@ ${formatter.format(item, blanks_to_pars=False)}
         )
         return template.render(formatter=self, tag=tag)
 
-
     def handle_ref(self, tag: QqTag):
         """
         Examples:
@@ -412,7 +449,8 @@ ${formatter.format(item, blanks_to_pars=False)}
 
             See \ref[Theorem|thm:existence]
 
-        In this case word ``Theorem'' will be part of a reference: e.g. in HTML it will look like
+        In this case word ``Theorem'' will be part of a reference: e.g.
+        in HTML it will look like
 
             See <a href="#label_thm:existence">Theorem 1</a>
 
@@ -464,7 +502,8 @@ ${formatter.format(item, blanks_to_pars=False)}
                     doc.asis(self.format(prefix, blanks_to_pars=False))
                 if eqref and hasattr(self, 'url_for_eq_snippet'):
                     doc.attr(('data-url', self.url_for_eq_snippet(number)))
-                if not tag.exists("nonumber"):
+                if (not isinstance(prefix, QqTag) or
+                        not prefix.exists("nonumber")):
                     if prefix:
                         doc.asis(" ")
                     if eqref:
@@ -483,7 +522,8 @@ ${formatter.format(item, blanks_to_pars=False)}
 
         Here sn:IVP -- label of snippet.
 
-        If no separator present, fuzzy search will be performed over flabels
+        If no separator present, fuzzy search will be performed over
+        flabels
 
         Example:
 
@@ -551,7 +591,8 @@ ${formatter.format(item, blanks_to_pars=False)}
             number = tag.get("number", "")
             with html("span", klass="env-title env-title__" + name):
                 if tag.find("label"):
-                    with html("a", klass="env-title env-title__" + name, href="#" + self.label2id(tag._label.value)):
+                    with html("a", klass="env-title env-title__" + name,
+                              href="#" + self.label2id(tag._label.value)):
                         text(join_nonempty(env_localname, number) + ".")
                 else:
                     text(join_nonempty(env_localname, number) + ".")
@@ -584,7 +625,10 @@ ${formatter.format(item, blanks_to_pars=False)}
                 else:
                     proofline = 'Proof'
                 doc.asis(join_nonempty(self.localize(proofline),
-                                       self.format(tag.find("of"), blanks_to_pars=False)).rstrip()+".")
+                                       self.format(
+                                           tag.find("of"),
+                                           blanks_to_pars=False)
+                                       ).rstrip() + ".")
             doc.asis(rstrip_p(" " + self.format(tag, blanks_to_pars=True)))
             doc.asis("<span class='end-of-proof'>&#8718;</span>")
         return doc.getvalue()+"\n<p>"
@@ -624,7 +668,8 @@ ${formatter.format(item, blanks_to_pars=False)}
 
     def handle_figure(self, tag: QqTag) -> str:
         """
-        Currently, only python-generated figures and plotly figures are supported.
+        Currently, only python-generated figures and plotly figures are
+        supported.
 
         Example:
 
@@ -641,7 +686,8 @@ ${formatter.format(item, blanks_to_pars=False)}
         """
         doc, html, text = Doc().tagtext()
         subtags = ['pythonfigure', 'plotly', 'rawhtml']
-        langs = {'pythonfigure': 'python', 'plotly': 'python', 'rawhtml': 'html'}
+        langs = {'pythonfigure': 'python', 'plotly': 'python',
+                 'rawhtml': 'html'}
         with html("div", klass="figure"):
             if tag.find("label"):
                 doc.attr(id=self.label2id(tag._label.value))
@@ -652,18 +698,25 @@ ${formatter.format(item, blanks_to_pars=False)}
                 if isinstance(child, QqTag):
                     if child.name in subtags:
                         if tag.exists("showcode"):
-                            doc.asis(self.showcode(child, collapsed=tag.exists("collapsed"),
-                                                   lang = langs.get(child.name)))
+                            doc.asis(self.showcode(
+                                child, collapsed=tag.exists("collapsed"),
+                                lang = langs.get(child.name)))
                         doc.asis(self.handle(child))
                     elif child.name == 'caption':
                         with html("div", klass="figure_caption"):
                             if label is not None:
-                                with html("a", klass="figure_caption_anchor", href="#" + self.label2id(label)):
-                                    text(join_nonempty(self.localize("Fig."), tag.get("number")))
+                                with html("a",
+                                          klass="figure_caption_anchor",
+                                          href="#" + self.label2id(label)):
+                                    text(join_nonempty(
+                                        self.localize("Fig."),
+                                        tag.get("number")))
                                 text(": ")
                             else:
-                                text(join_nonempty(self.localize("Fig."), tag.get("number"))+": ")
-                            doc.asis(self.format(child, blanks_to_pars=True))
+                                text(join_nonempty(self.localize("Fig."),
+                                                   tag.get("number"))+": ")
+                            doc.asis(self.format(child,
+                                                 blanks_to_pars=True))
         return doc.getvalue()
 
     def handle_pythonfigure(self, tag: QqTag) -> str:
@@ -677,7 +730,8 @@ ${formatter.format(item, blanks_to_pars=False)}
         path = self.make_python_fig(tag.text_content, exts=("svg"))
         doc, html, text = Doc().tagtext()
         with html("img", klass="figure img-responsive",
-                  src=self.url_for_figure(path + "/" + self.default_figname + ".svg")):
+                  src=self.url_for_figure(
+                        path + "/" + self.default_figname + ".svg")):
             if tag.exists("style"):
                 doc.attr(style=tag._style.value)
         return doc.getvalue()
@@ -697,24 +751,28 @@ ${formatter.format(item, blanks_to_pars=False)}
 
         self.css['highlightjs'] = (
             '<link rel="stylesheet" '
-            'href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.2.0/styles/default.min.css">\n'
+            'href="https://cdnjs.cloudflare.com/ajax/libs/'
+            'highlight.js/9.2.0/styles/default.min.css">\n'
             '<style type="text/css">\n'
             '.hljs {background: inherit;}\n'
             '</style>\n'
         )
         self.js_top['highlightjs'] = (
-            '<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.2.0/highlight.min.js"></script>\n'
+            '<script src="https://cdnjs.cloudflare.com/ajax/libs/'
+            'highlight.js/9.2.0/highlight.min.js"></script>\n'
             '<script>hljs.initHighlightingOnLoad();</script>'
         )
         self.js_onload['highlightjs'] = """
         function toggle_block(obj, show) {
           var span = obj.find('span');
           if(show === true){
-            span.removeClass('glyphicon-chevron-up').addClass('glyphicon-chevron-down');
+            span.removeClass('glyphicon-chevron-up')
+                .addClass('glyphicon-chevron-down');
             obj.next('pre').slideDown();
           }
           else {
-            span.removeClass('glyphicon-chevron-down').addClass('glyphicon-chevron-up');
+            span.removeClass('glyphicon-chevron-down')
+                .addClass('glyphicon-chevron-up');
             obj.next('pre').slideUp();
           }
         }
@@ -733,7 +791,8 @@ ${formatter.format(item, blanks_to_pars=False)}
         """
 
         if not collapsed:
-            button = button.replace("glyphicon-chevron-up", "glyphicon-chevron-down")
+            button = button.replace("glyphicon-chevron-up",
+                                    "glyphicon-chevron-down")
 
         doc, html, text = Doc().tagtext()
         with html("pre"):
@@ -748,7 +807,8 @@ ${formatter.format(item, blanks_to_pars=False)}
 
                 doc.asis(tag.text_content)
 
-        return "<div style='text-align: left'>" + button + doc.getvalue() + "</div>"
+        return ("<div style='text-align: left'>" +
+                button + doc.getvalue() + "</div>")
 
 
     def handle_snippet(self, tag: QqTag) -> str:
@@ -760,7 +820,8 @@ ${formatter.format(item, blanks_to_pars=False)}
         """
         anchor = ""
         if not tag.exists("backref") and tag.exists("label"):
-            anchor = "<span id='{}'></span>".format(self.label2id(tag._label.value))
+            anchor = "<span id='{}'></span>".format(
+                self.label2id(tag._label.value))
         if tag.exists("hidden"):
             return anchor
         return anchor + self.format(tag, blanks_to_pars=True)
@@ -819,8 +880,10 @@ ${formatter.format(item, blanks_to_pars=False)}
         for tag in root:
             if isinstance(tag, QqTag):
                 name = tag.name
-                if (name in self.counters or name in self.enumerateable_envs) and not (tag.find('number') or
-                                                                                           tag.exists('nonumber')):
+                if ((name in self.counters or
+                            name in self.enumerateable_envs) and
+                        not (tag.find('number') or
+                                 tag.exists('nonumber'))):
                     counter = self.get_counter_for_tag(tag)
                     if counter is not None:
                         counter.increase()
@@ -855,7 +918,8 @@ ${formatter.format(item, blanks_to_pars=False)}
         """
         Returns the number of chapter to which tag belongs.
 
-        Chapters are separated by `h1` tag. Chapter before the first `h1` tag has number zero.
+        Chapters are separated by `h1` tag. Chapter before the first `h1`
+        tag has number zero.
 
         :param tag:
         :return:
@@ -869,13 +933,17 @@ ${formatter.format(item, blanks_to_pars=False)}
                 return i - 1
         return i
 
-    def url_for_chapter(self, index=None, label=None, fromindex=None) -> str:
+    def url_for_chapter(self, index=None, label=None,
+                        fromindex=None) -> str:
         """
-        Returns url for chapter. Either index or label of the target chapter have to be provided.
-        Optionally, fromindex can be provided. In this case function will return empty string if
+        Returns url for chapter. Either index or label of
+        the target chapter have to be provided.
+        Optionally, fromindex can be provided. In this case
+        function will return empty string if
         target chapter coincides with current one.
 
-        You can inherit from QqHTMLFormatter and override url_for_chapter_by_index and url_for_chapter_by_label too
+        You can inherit from QqHTMLFormatter and override
+        url_for_chapter_by_index and url_for_chapter_by_label too
         use e.g. Flask's url_for.
         """
         assert index is not None or label is not None
@@ -899,7 +967,8 @@ ${formatter.format(item, blanks_to_pars=False)}
 
     def add_chapter(self, chapter):
         if chapter.header.find("label"):
-            self.label2chapter[chapter.header._label.value] = len(self.chapters)
+            self.label2chapter[chapter.header._label.value] = len(
+                self.chapters)
         self.chapters.append(chapter)
 
     def do_format(self):
@@ -917,16 +986,19 @@ ${formatter.format(item, blanks_to_pars=False)}
         if tag.find("label"):
             return self.label2id(tag._label.value)
         elif tag.find("number"):
-            return self.label2id(tag.name+"_number_"+str(tag._number.value))
+            return (self.label2id(tag.name+"_number_" +
+                                  str(tag._number.value)))
         else:
             return ""
 
-    def mk_toc(self, maxlevel=2, chapter = None) -> str:
+    def mk_toc(self, maxlevel=2, chapter=None) -> str:
         """
         Makes TOC (Table Of Contents)
 
-        :param maxlevel: maximum heading level to include to TOC (default: 2)
-        :param chapter: if None, we assume to have whole document on the same page and TOC contains only local links.
+        :param maxlevel: maximum heading level to include to TOC
+        (default: 2)
+        :param chapter: if None, we assume to have whole document on
+        the same page and TOC contains only local links.
         If present, it is equal to index of current chapter
         :return: str with HTML content of TOC
         """
@@ -944,7 +1016,8 @@ ${formatter.format(item, blanks_to_pars=False)}
                     if m:
                         hlevel = int(m.group(1))
 
-                        # h1 header marks new chapter, so increase curchapter counter
+                        # h1 header marks new chapter, so increase
+                        # curchapter counter
                         if hlevel == 1:
                             curchapter += 1
 
@@ -957,12 +1030,18 @@ ${formatter.format(item, blanks_to_pars=False)}
                             chunk.append("</ul></li>\n")
                             curlevel -= 1
 
-                        targetpage = self.url_for_chapter(index=curchapter, fromindex=chapter)
+                        targetpage = self.url_for_chapter(
+                            index=curchapter, fromindex=chapter)
 
                         item_doc, item_html, item_text = Doc().tagtext()
-                        with item_html("li", klass = "toc_item toc_item_level_%i" % curlevel):
-                            with item_html("a", href=targetpage+"#"+self.tag_id(child)):
-                                item_text(self.format(child, blanks_to_pars=False))
+                        with item_html(
+                                "li",
+                                klass = ("toc_item toc_item_level_%i" %
+                                             curlevel)):
+                            with item_html("a", href=(targetpage + "#" +
+                                                      self.tag_id(child))):
+                                item_text(self.format(
+                                    child, blanks_to_pars=False))
                         chunk.append(item_doc.getvalue())
                         doc.asis("".join(chunk))
         return doc.getvalue()
@@ -973,7 +1052,8 @@ ${formatter.format(item, blanks_to_pars=False)}
         It's first 5 characters of MD5-hashsum of tag's content
         :return:
         """
-        return hashlib.md5(repr(tag.as_list()).encode('utf-8')).hexdigest()[:5]
+        return hashlib.md5(
+            repr(tag.as_list()).encode('utf-8')).hexdigest()[:5]
 
     def handle_quiz(self, tag: QqTag):
         """
