@@ -4,18 +4,17 @@
 **qqmbr** is a publishing engine for mathematical texts that aims on different media: web, mobile and paper.
 
 ### Highlights
-**qqmbr** is based on [indentml](https://github.com/ischurov/indentml) markup. It has the following features:
 
-- Clean syntax. It's a mixture of Python-style indent-based blocks and LaTeX-style commands beginning with backslash, see code samples below.
+- Clean syntax, based on [indentml](https://github.com/ischurov/indentml) markup. It's a mixture of Python-style indent-based blocks and LaTeX-style commands beginning with backslash, see code samples below.
 - Excellent equation support on web and mobile, thanks to MathJax.
-- All that you need to structure your text: different levels of headers, environments (*theorem*, *lemma* and so on).
+- All what you need to structure your text: different levels of headers, environments (*theorem*, *lemma* and so on).
 - References by labels.
 - Preview of equations and definitions on hover (a.k.a. *snippets*, see example [here](http://math-info.hse.ru/odebook/chapter/label/chap:2:auto/#label_sec_2_euler), look for «Контрольный вопрос»)).
 - Interactive quizes, (see example [here](http://math-info.hse.ru/odebook/chapter/label/chap:notion_of_ODE/#label_par_1_Cauchy_problem)).
 - Programmatically generated images embedding (matplotlib and plotly).
 
 ### View in action
-You can look at my Lecture Notes on ODE sources (see e.g. [this qqDoc source](https://github.com/ischurov/odebook/blob/master/chapter03.qq) and 
+You can look at my Lecture Notes on ODE sources (see e.g. [this qqmbr source](https://github.com/ischurov/odebook/blob/master/chapter03.qq) and 
 [its HTML render](http://math-info.hse.ru/f/2015-16/nes-ode/chapter03.html), in Russian) or at the [code sample](#code-sample) below.
 
 You can also play with limited subset of **qqmbr** features in [live demo](http://math-info.hse.ru/qqmathpreview).
