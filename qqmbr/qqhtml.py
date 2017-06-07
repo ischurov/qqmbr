@@ -551,6 +551,23 @@ ${formatter.format(item, blanks_to_pars=False)}
             doc.asis(self.format(title, blanks_to_pars=True))
         return doc.getvalue()
 
+    def handle_href(self, tag: QqTag):
+        """
+        Example:
+
+            Content from \href[Wikipedia|http://wikipedia.org]
+
+        Uses tags: href
+
+        :param tag: tag to proceed
+        :return:
+        """
+        a, url = tag.children_values(not_simple='keep')
+        doc, html, text = Doc().tagtext()
+        with html("a", klass="href", href=url.strip()):
+            doc.asis(format(a.strip(), blanks_to_pars=False))
+        return doc.getvalue()
+
     def url_for_snippet(self, label):
         """
         Returns url for snippet by label.
@@ -1083,6 +1100,5 @@ ${formatter.format(item, blanks_to_pars=False)}
     def handle_rawhtml(self, tag: QqTag):
         return tag.text_content
 
-    ### TODO: Add handle_href
-    # def handle_href(self, tag: QqTag):
+
 
