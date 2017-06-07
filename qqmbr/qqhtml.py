@@ -565,7 +565,7 @@ ${formatter.format(item, blanks_to_pars=False)}
         a, url = tag.children_values(not_simple='keep')
         doc, html, text = Doc().tagtext()
         with html("a", klass="href", href=url.strip()):
-            doc.asis(format(a.strip(), blanks_to_pars=False))
+            doc.asis(self.format(a.strip(), blanks_to_pars=False))
         return doc.getvalue()
 
     def url_for_snippet(self, label):
