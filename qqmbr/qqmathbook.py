@@ -41,7 +41,7 @@ app.config['mathjax_node'] = False
 app.config['css_correction'] = r"""
 <style type='text/css'>
 .mjx-chtml {
-font-size: 110%;
+font-size: 120%;
 }
 </style>
 """
