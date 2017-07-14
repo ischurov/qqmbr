@@ -59,17 +59,17 @@ def mplot(xs, f, **kw):
     the rest of arguments are passed to plot"""
     plt.plot(xs, list(map(f,xs)), **kw)
 
-def axes4x4(labels=("t","x")):
+def axes4x4(labels=("t","x"),xmin=-4, xmax=4, ymin=-4, ymax=4, fontsize=20):
     """Set axes to [-4,4]×[-4,4] and label them
     
     args
     ====
     - labels — axes labels (x, y)
     """
-    plt.axis([-4,4,-4,4])
+    plt.axis([xmin,xmax, ymin, ymax])
     center_spines()
-    plt.text(3.8,0.2,"$%s$" % labels[0],fontsize=20)
-    plt.text(0.1,3.7,"$%s$"% labels[1],fontsize=20)
+    plt.text(xmax - 0.2, 0.2, "$%s$" % labels[0], fontsize=fontsize)
+    plt.text(0.1, ymax - 0.3, "$%s$" % labels[1], fontsize=fontsize)
 
 def draw_axes(xmin, xmax, ymin, ymax, labels=("x", "y")):
     plt.axis([xmin, xmax, ymin, ymax])
@@ -129,7 +129,7 @@ def center_spines(ax=None, centerx=0, centery=0):
         # Turn on minor and major gridlines and ticks
         axis.set_ticks_position('both')
         axis.grid(True, 'major', ls='solid', lw=0.5, color='gray')
-        axis.grid(True, 'minor', ls='solid', lw=0.1, color='gray')
+#        axis.grid(True, 'minor', ls='solid', lw=0.1, color='gray')
         axis.set_minor_locator(mpl.ticker.AutoMinorLocator())
 
         # Hide the ticklabels at <centerx, centery>
@@ -295,3 +295,70 @@ def mcontour(xs, ys, fs, levels=None, **kw):
         plt.contour(x,y,z,sorted(set(levels)),**kw)
     else:
         plt.contour(x,y,z,**kw)
+
+def get_default(from_, **kwargs):
+    return {k:from_.get(k, v) for k, v in kwargs.items()}
+
+def onedim_phasecurves(left, right, singpoints, directions, 
+                       orientation='vertical', shift=0, 
+                       delta=0.05, **kwargs):
+    """
+    Draws phase curves of one-directional vector field;
+    left and right are borders
+    singpoints is a list of singular points (equilibria)
+    directions is a list of +1 and -1 that gives a direction
+
+    Example:
+
+
+    plt.ylim(-4, 4)
+    plt.xlim(-4, 4)
+    onedim_phasecurves(-4, 4, [-1, 1], [1, -1, 1], orientation='horizontal', 
+                       shift=1)
+
+    """
+    assert len(directions) == len(singpoints) + 1
+    assert orientation in ['vertical', 'horizontal']
+    n = len(singpoints)
+    defaultcolor = 'Teal'
+    plot_params = get_default(kwargs, color=defaultcolor, marker='o', 
+                       fillstyle='none', mew=5, lw=0, markersize=2)
+    quiver_params = dict(angles='xy', 
+                         scale_units='xy', scale=1, units='inches')
+    quiver_params.update(get_default(kwargs, width=0.03, 
+                                      color=defaultcolor))
+
+    baseline = np.zeros(n) + shift
+    if orientation == 'vertical':
+        plt.plot(baseline, singpoints, **plot_params)
+    else:
+        plt.plot(singpoints, baseline, **plot_params)
+
+    xs = np.zeros(n + 1) + shift
+    ys = []
+    us = np.zeros(n + 1)
+    vs = []
+    endpoints = [left] + list(singpoints) + [right]
+    for i, direction in enumerate(directions):
+        if direction > 0:
+            beginning = endpoints[i]
+            ending = endpoints[i+1]
+        elif direction < 0:
+            beginning = endpoints[i+1]
+            ending = endpoints[i]
+        else:
+            raise Exception("direction should be >0 or <0")
+        ys.append(beginning + np.sign(direction) * delta)
+        vs.append(ending - beginning - np.sign(direction)*2*delta)
+    if orientation == 'vertical':
+        plt.quiver(xs, ys, us, vs, **quiver_params, **kwargs)
+    else:
+        plt.quiver(ys, xs, vs, us, **quiver_params, **kwargs)
+
+plt.ylim(-4, 4)
+plt.xlim(-4, 4)
+
+
+onedim_phasecurves(-4, 4, [-1, 1], [1, -1, 1], orientation='horizontal', 
+                   shift=1)
+
