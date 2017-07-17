@@ -68,8 +68,11 @@ def axes4x4(labels=("t","x"),xmin=-4, xmax=4, ymin=-4, ymax=4, fontsize=20):
     """
     plt.axis([xmin,xmax, ymin, ymax])
     center_spines()
-    plt.text(xmax - 0.2, 0.2, "$%s$" % labels[0], fontsize=fontsize)
-    plt.text(0.1, ymax - 0.3, "$%s$" % labels[1], fontsize=fontsize)
+    xscale = (xmax - xmin) / 8.
+    yscale = (ymax - ymin) / 8.
+    plt.text(xmax - 0.2 * xscale, 0.2 * yscale, "$%s$" % labels[0],
+             fontsize=fontsize)
+    plt.text(0.1 * xscale, ymax - 0.3 * yscale, "$%s$" % labels[1], fontsize=fontsize)
 
 def draw_axes(xmin, xmax, ymin, ymax, labels=("x", "y")):
     plt.axis([xmin, xmax, ymin, ymax])
@@ -276,8 +279,14 @@ def phaseportrait(fs,inits,t=(-5,5),n=100, head_width = 0.13, head_length = 0.3,
                 Z.append(None)
         direction = fs(x0)
         direction = direction / scipy.linalg.norm(direction) * 0.01
+        if 'color' in kw:
+            arrow_params = dict(fc=kw['color'],
+                                ec=kw['color'])
+        else:
+            arrow_params = {}
         plt.arrow(x0[0]-direction[0],x0[1]-direction[1],direction[0],direction[1],
-              head_width=head_width, head_length=head_length, lw=0.0, **kw)
+              head_width=head_width, head_length=head_length, lw=0.0, **arrow_params,
+                  **kw)
     plt.plot(X,Y,**kw)
 
 

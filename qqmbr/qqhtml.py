@@ -238,7 +238,7 @@ class QqHTMLFormatter(object):
             loc = {}
             gl = self.pythonfigure_globals
             plt.close()
-            exec(code, gl, loc)
+            exec(code, gl)
             if tight_layout:
                 plt.tight_layout()
             for ext in exts:

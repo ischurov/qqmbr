@@ -223,7 +223,7 @@ def show_chapter(index=None, label=None):
 
 
     return render_template("preview.html", html=html,
-                           title=tree._h1.text_content,
+                           title=formatter.chapters[index].header.text_content,
                            toc=formatter.mk_toc(chapter=index, maxlevel=1), preamble="",
                            next=next, prev=prev, js_bottom = "\n".join(formatter.js_bottom.values()),
                            js_onload = "\n".join(formatter.js_onload.values()))
