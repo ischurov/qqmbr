@@ -300,7 +300,7 @@ def register_command(f):
 
 @register_command
 def preview():
-    app.run()
+    app.run(host='0.0.0.0')
 
 @register_command
 def build():

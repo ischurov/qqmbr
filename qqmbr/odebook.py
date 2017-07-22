@@ -29,6 +29,7 @@ import matplotlib as mpl
 import scipy
 from scipy import integrate
 
+
 def mquiver(xs, ys, v, **kw):
     """wrapper function for quiver
     xs and ys are arrays of x's and y's
@@ -248,46 +249,112 @@ def plottrajectories(fs, x0, t=np.linspace(1,400,10000), **kw):
     plt.plot(X[:,0], X[:,1], **kw)
 
 
-def phaseportrait(fs,inits,t=(-5,5),n=100, head_width = 0.13, head_length = 0.3, **kw):
+def phaseportrait(fs, inits, firstint=None,
+                  t=(-5, 5), n=100, arrow=True, 
+                  xmin=None, ymin=None, xmax=None, ymax=None, 
+                  head_width = 0.13, 
+                  head_length=0.3, arrow_size=1, singpoint_size=0, 
+                  singcolor='steelblue', contourcolor='steelblue', **kw):
     """
     plots phase portrait of the differential equation (\dot x,\dot y)=fs(x,y)
 
-    f  -- must accept an array of X and t=0, and return a 2D array of \dot y and \dot x
+    fs  -- must accept an array X=(x, y), and return a 2D array of \dot y and \dot x
+    firstint -- first integral function, must accept an array X=(x, y) and
+        return real number. If specified, no integration of equation will be
+        performed. Instead, contours of firstint will be drawn. fs will be used
+        to draw vectors. xmin, xmax, ymin, ymax should be specified
     inits -- list of vectors representing inital conditions
-    t -- time interval
+    t -- is either a tuple (tmin, tmax), where tmin <= 0 and tmax >= 0,
+         or scalar; in the latter case, tmin = 0, tmax = t
     n -- number of points
 
     Example
     =======
     
     from itertools import product
-    phaseportrait(lambda X, t=0: array([X[0],2*X[1]]), product(linspace(-4,4,15),linspace(-4,4,15)), [-2,0.3], n=20)
+    phaseportrait(lambda X: array([X[0],2*X[1]]), product(linspace(-4,4,15),linspace(-4,4,15)), [-2,0.3], n=20)
     """
-    assert(t[0]<t[1] and t[1]>0)
-    X=[]
-    Y=[]
+    try:
+        tmin = t[0]
+        tmax = t[1]
+        assert tmin <= 0 and tmax >= 0 
+    except TypeError:
+        tmin = 0
+        tmax = t
+    head_width *= arrow_size
+    head_length *= arrow_size
+
+    points = []
+    inits = np.array(inits)
+    integrator = integrate.ode(lambda t, X: fs(X)).set_integrator('vode')
+    if firstint is None:
+        for x0 in inits:
+            if tmin < 0:
+                segments=[(tmin, tmin/n), (tmax, tmax/n)]
+            else:
+                segments=[(tmax, tmax/n)]
+            
+            for T, delta_t in segments:
+                integrator.set_initial_value(x0)
+                points.append(x0)
+                sign = np.sign(delta_t)
+                
+                while (sign * integrator.t < sign * T):
+                    point = integrator.integrate(integrator.t + delta_t)
+                    if not integrator.successful():
+                        break
+                    if ((xmin is not None and point[0] < xmin) or
+                        (xmax is not None and point[0] > xmax) or
+                        (ymin is not None and point[1] < ymin) or
+                        (ymax is not None and point[1] > ymax)):
+                        point = [None, None]
+                    points.append(point)
+                points.append([None, None])
+        points = np.array(points)
+        plt.plot(points[:, 0], points[:, 1],**kw)
+    else:
+        assert None not in [xmin, xmax, ymin, ymax], \
+                ("Please, specify xmin, xmax, ymin, ymax "
+                 "if you use first integral")
+        X = np.linspace(xmin, xmax, n * 10)
+        Y = np.linspace(xmin, xmax, n * 10)
+        # Z = np.array([[firstint(np.array([x, y])) for x in X] for y in Y])
+        try:
+            Z = firstint(np.meshgrid(X, Y))
+            # fast version for ufunc-compatible firstint
+        except:
+            Z = np.array([[firstint(np.array([x, y])) for x in X] for y in Y])
+            # fallback if something goes wrong
+        levels = sorted({firstint(x0) for x0 in inits})
+        plt.contour(X, Y, Z, levels=levels, colors=contourcolor)
+        
     for x0 in inits:
-        x0=np.array(x0)
-        if t[0]<0:
-            segments=[np.linspace(0,t[0],n),np.linspace(0,t[1],n)]
-        else:
-            segments=[np.linspace(t[0],t[1],2*n)]
-        for s in segments:
-            points=integrate.odeint(fs,x0,s)
-            for i,Z in enumerate([X,Y]):
-                Z.extend(points[:,i])
-                Z.append(None)
-        direction = fs(x0)
-        direction = direction / scipy.linalg.norm(direction) * 0.01
-        if 'color' in kw:
-            arrow_params = dict(fc=kw['color'],
-                                ec=kw['color'])
-        else:
-            arrow_params = {}
-        plt.arrow(x0[0]-direction[0],x0[1]-direction[1],direction[0],direction[1],
-              head_width=head_width, head_length=head_length, lw=0.0, **arrow_params,
-                  **kw)
-    plt.plot(X,Y,**kw)
+        vector = np.array(fs(x0))
+        if arrow:
+            if scipy.linalg.norm(vector) > 1E-5:
+                direction = vector / scipy.linalg.norm(vector) * 0.01
+            else:
+                direction = None
+            if 'color' in kw:
+                arrow_params = dict(fc=kw['color'],
+                                    ec=kw['color'])
+            else:
+                arrow_params = {}
+            if direction is not None:
+                plt.arrow(x0[0] - direction[0],
+                          x0[1] - direction[1],
+                          direction[0],
+                          direction[1], 
+                          head_width=head_width, 
+                          head_length=head_length, 
+                          lw=0.0, **arrow_params)
+            else:
+                plt.plot([x0[0]], [x0[1]], 
+                         marker='o', mew=2 * singpoint_size, 
+                         lw=0, markersize=5 * singpoint_size,
+                         markerfacecolor='white', markeredgecolor=singcolor)
+
+
 
 
 def mcontour(xs, ys, fs, levels=None, **kw):
@@ -343,10 +410,24 @@ def onedim_phasecurves(left, right, singpoints, directions,
     else:
         plt.plot(singpoints, baseline, **plot_params)
 
+    # We have to process special case when left or right border is singular
+    # move them to special list lonesingpoints to process later
+    if singpoints:
+        if singpoints[0] == left:
+            singpoints.pop(0)
+            directions.pop(0)
+            n -= 1
+        if singpoints[-1] == right:
+            singpoints.pop()
+            directions.pop()
+            n -= 1
+
     xs = np.zeros(n + 1) + shift
     ys = []
     us = np.zeros(n + 1)
     vs = []
+
+    
     endpoints = [left] + list(singpoints) + [right]
     for i, direction in enumerate(directions):
         if direction > 0:
@@ -363,11 +444,4 @@ def onedim_phasecurves(left, right, singpoints, directions,
         plt.quiver(xs, ys, us, vs, **quiver_params, **kwargs)
     else:
         plt.quiver(ys, xs, vs, us, **quiver_params, **kwargs)
-
-plt.ylim(-4, 4)
-plt.xlim(-4, 4)
-
-
-onedim_phasecurves(-4, 4, [-1, 1], [1, -1, 1], orientation='horizontal', 
-                   shift=1)
 
