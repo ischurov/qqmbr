@@ -321,8 +321,10 @@ def phaseportrait(fs, inits, t=(-5, 5), n=100, firstint=None, arrow=True,
         # Z = np.array([[firstint(np.array([x, y])) for x in X] for y in Y])
         try:
             Z = firstint(np.meshgrid(X, Y))
+            print("Used fast version")
             # fast version for ufunc-compatible firstint
         except:
+            raise
             Z = np.array([[firstint(np.array([x, y])) for x in X] for y in Y])
             # fallback if something goes wrong
         levels = sorted({firstint(x0) for x0 in inits})
