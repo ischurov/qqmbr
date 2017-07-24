@@ -72,8 +72,9 @@ def axes4x4(labels=("t","x"),xmin=-4, xmax=4, ymin=-4, ymax=4, fontsize=20):
     xscale = (xmax - xmin) / 8.
     yscale = (ymax - ymin) / 8.
     plt.text(xmax - 0.2 * xscale, 0.2 * yscale, "$%s$" % labels[0],
+             fontsize=fontsize, verticalalignment='bottom')
+    plt.text(0.1 * xscale, ymax - 0.3 * yscale, "$%s$" % labels[1],
              fontsize=fontsize)
-    plt.text(0.1 * xscale, ymax - 0.3 * yscale, "$%s$" % labels[1], fontsize=fontsize)
 
 def draw_axes(xmin, xmax, ymin, ymax, labels=("x", "y")):
     plt.axis([xmin, xmax, ymin, ymax])
@@ -249,8 +250,7 @@ def plottrajectories(fs, x0, t=np.linspace(1,400,10000), **kw):
     plt.plot(X[:,0], X[:,1], **kw)
 
 
-def phaseportrait(fs, inits, firstint=None,
-                  t=(-5, 5), n=100, arrow=True, 
+def phaseportrait(fs, inits, t=(-5, 5), n=100, firstint=None, arrow=True,
                   xmin=None, ymin=None, xmax=None, ymax=None, 
                   head_width = 0.13, 
                   head_length=0.3, arrow_size=1, singpoint_size=0, 
@@ -417,6 +417,7 @@ def onedim_phasecurves(left, right, singpoints, directions,
             singpoints.pop(0)
             directions.pop(0)
             n -= 1
+    if singpoints:
         if singpoints[-1] == right:
             singpoints.pop()
             directions.pop()

@@ -187,7 +187,8 @@ class QqHTMLFormatter(object):
                                    "as plot\n"
                                    "from plotly.offline import "
                                    "init_notebook_mode\n\n"
-                                   "init_notebook_mode()\n\n")}
+                                   "init_notebook_mode()\n\n"),
+                              'rawhtml': ''}
 
         self.plotly_plotter = PlotlyPlotter()
 
@@ -686,7 +687,8 @@ ${formatter.format(item, blanks_to_pars=False)}
     def handle_figure(self, tag: QqTag) -> str:
         """
         Currently, only python-generated figures and plotly figures are
-        supported.
+        supported. Also one can use \rawhtml to embed arbitrary HTML code
+        (e.g. use D3.js).
 
         Example:
 
@@ -822,7 +824,7 @@ ${formatter.format(item, blanks_to_pars=False)}
                 doc.asis(self.code_prefixes.get(tag.name, "# "+tag.name))
                 # add a prefix if exists
 
-                doc.asis(tag.text_content)
+                text(tag.text_content)
 
         return ("<div style='text-align: left'>" +
                 button + doc.getvalue() + "</div>")
