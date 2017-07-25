@@ -251,7 +251,7 @@ def plottrajectories(fs, x0, t=np.linspace(1,400,10000), **kw):
 
 
 def phaseportrait(fs, inits, t=(-5, 5), n=100, firstint=None, arrow=True,
-                  xmin=None, ymin=None, xmax=None, ymax=None, 
+                  xmin=None, ymin=None, xmax=None, ymax=None, gridstep=200,
                   head_width = 0.13, 
                   head_length=0.3, arrow_size=1, singpoint_size=0, 
                   singcolor='steelblue', contourcolor='steelblue', **kw):
@@ -314,17 +314,17 @@ def phaseportrait(fs, inits, t=(-5, 5), n=100, firstint=None, arrow=True,
         plt.plot(points[:, 0], points[:, 1],**kw)
     else:
         assert None not in [xmin, xmax, ymin, ymax], \
-                ("Please, specify xmin, xmax, ymin, ymax "
+                ("Please, specify xmin, xmax, ymin, ymax and gridstep"
                  "if you use first integral")
-        X = np.linspace(xmin, xmax, n * 10)
-        Y = np.linspace(xmin, xmax, n * 10)
+        X = np.linspace(xmin, xmax, gridstep)
+        Y = np.linspace(xmin, xmax, gridstep)
         # Z = np.array([[firstint(np.array([x, y])) for x in X] for y in Y])
         try:
             Z = firstint(np.meshgrid(X, Y))
-            print("Used fast version")
             # fast version for ufunc-compatible firstint
         except:
-            raise
+            print("Can't use vectorized first integral,"
+                  " falling back to loops")
             Z = np.array([[firstint(np.array([x, y])) for x in X] for y in Y])
             # fallback if something goes wrong
         levels = sorted({firstint(x0) for x0 in inits})
