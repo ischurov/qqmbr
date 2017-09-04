@@ -159,8 +159,7 @@ def prepare_book():
 
     parser.allowed_tags.update(formatter.uses_tags())
     parser.allowed_tags.add('idx') # for indexes
-    parser.include_dir = curdir
-    tree = parser.parse(lines)
+    tree = parser.parse(lines).process_include_tags(parser, curdir)
     formatter.root = tree
     formatter.pythonfigure_globals.update({'ob': odebook, 'np': numpy})
     formatter.code_prefixes['pythonfigure'] += ("import numpy as np\n"

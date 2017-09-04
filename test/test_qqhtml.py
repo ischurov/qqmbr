@@ -115,7 +115,7 @@ See \ref{eq:one} and \ref{eq:two}
         s = html.do_format()
         soup = BeautifulSoup(s, 'html.parser')
         self.assertEqual(soup.text, "\\[\n\\begin{align}\n\nc^2 &= a^2 + b^2 \n\\tag{1}\n\\\\\n"
-                                    "c &= \\sqrt{a^2 + b^2} \n\\tag{2}\n\\\\\n\\end{align}\n\\]\nSee (1) and (2)\n")
+                                    "c &= \\sqrt{a^2 + b^2} \n\n\n\\tag{2}\n\\\\\n\\end{align}\n\\]\nSee (1) and (2)\n")
         self.assertEqual(soup.a['href'], "#mjx-eqn-1")
         self.assertEqual(soup.a.string, "(1)")
         self.assertEqual(soup("a")[1]['href'], "#mjx-eqn-2")
@@ -149,7 +149,7 @@ Hello
     def test_ref_with_separator(self):
         doc = r"""\h1 Hello \label sec:first
 
-See \ref[section|sec:first] for details.
+See \ref[section][sec:first] for details.
 """
         parser = QqParser()
         formatter = QqHTMLFormatter()
@@ -167,7 +167,7 @@ See \ref[section|sec:first] for details.
 \h1 World \label sec:other
 
 See
-\ref[section|sec:first] and \ref[section|sec:other] for details.
+\ref[section][sec:first] and \ref[section][sec:other] for details.
 """
         parser = QqParser()
         formatter = QqHTMLFormatter()

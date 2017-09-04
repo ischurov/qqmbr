@@ -469,10 +469,17 @@ ${formatter.format(item, blanks_to_pars=False)}
         :return:
         """
         doc, html, text = Doc().tagtext()
+        if len(tag) == 1:
+            tag = tag.unitemized()
+            
         if tag.is_simple:
             prefix = None
             label = tag.value
         else:
+            if len(tag) != 2:
+                raise Exception("Incorrect number of arguments in "
+                                + str(tag) + ": 2 arguments expected")
+
             prefix, label = tag.children_values(not_simple='keep')
 
         number = self.label2number.get(label, "???")
@@ -539,13 +546,20 @@ ${formatter.format(item, blanks_to_pars=False)}
         """
 
         doc, html, text = Doc().tagtext()
-        if tag.exists("_item"):
-            title, label = tag.children_values(not_simple='keep')
-            # TODO: testme
-        else:
+
+        if len(tag) == 1:
+            tag = tag.unitemized()
+        if tag.is_simple:
             title = tag.value.replace("\n", " ")
             target = self.find_tag_by_flabel(title)
             label = target._label.value
+        else:
+            if len(tag) != 2:
+                raise Exception("Incorrect number of arguments in "
+                              + str(tag) + ": one or two arguments "
+                                           "expected")
+            title, label = tag.children_values(not_simple='keep')
+            # TODO: testme
 
         data_url = self.url_for_snippet(label)
         with html("a", ('data-url', data_url), klass="snippet-ref"):
