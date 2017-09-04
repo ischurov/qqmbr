@@ -29,14 +29,14 @@ def render():
     parser = QqParser(allowed_tags=formatter.safe_tags)
     try:
         tree = parser.parse(text)
-    except:
-        return jsonify(error='parse error')
+    except Exception as e:
+        return jsonify(error='parse error: ' + str(e))
 
     formatter.root = tree
     try:
         output = formatter.do_format()
-    except:
-        return jsonify(error='format error')
+    except Exception as e:
+        return jsonify(error='format error: ' + str(e))
     return jsonify(output=output)
 
 @app.route('/')

@@ -143,6 +143,7 @@ Therefore,
         <div class="col-md-6" id="output" >
 
         </div>
+        <span style="color: red; font-size: 70%" id="error"></span>
     </div>
     <div class="page-footer">
         <span style="font-size:70%">Live qqmath example.
@@ -192,6 +193,9 @@ Therefore,
                         if (!result.error) {
                             $("#output").html(result.output);
                             MathJax.Hub.Queue(["Typeset",MathJax.Hub]);
+                            $("#error").html("");
+                        } else {
+                            $("#error").html(result.error);
                         }
                     }
                 });
