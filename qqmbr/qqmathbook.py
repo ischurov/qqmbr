@@ -249,7 +249,7 @@ def show_snippet(label):
 
     parser = QqParser()
     parser.allowed_tags.update(formatter.uses_tags())
-    backref_tag = parser.parse(r"\ref[Подробнее\nonumber|{}]".format(backref))
+    backref_tag = parser.parse(r"\ref[Подробнее\nonumber][{}]".format(backref))
     tag.append_child(backref_tag._ref)
 
     html = formatter.format(tag, blanks_to_pars=True)

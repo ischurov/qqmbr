@@ -116,7 +116,7 @@ See \ref{eq:one} and \ref{eq:two}
         soup = BeautifulSoup(s, 'html.parser')
         print(repr(soup.text))
         self.assertEqual(soup.text, "\\[\n\\begin{align}\n\nc^2 &= a^2 + b^2 \n\\tag{1}\n\\\\\n"
-                                    "c &= \\sqrt{a^2 + b^2} \n\n\\tag{2}\n\\\\\n\\end{align}\n\\]\nSee (1) and (2)")
+                                    "c &= \\sqrt{a^2 + b^2} \n\\tag{2}\n\\\\\n\\end{align}\n\\]\n\n\n\nSee (1) and (2)")
         self.assertEqual(soup.a['href'], "#mjx-eqn-1")
         self.assertEqual(soup.a.string, "(1)")
         self.assertEqual(soup("a")[1]['href'], "#mjx-eqn-2")
