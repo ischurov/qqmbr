@@ -34,14 +34,15 @@ def working_directory(path):
 
 class TestQqHtmlMethods(unittest.TestCase):
     def test_parse_html1(self):
-        parser = QqParser(allowed_tags={'h1', 'h2', 'h3', 'h4', 'eq',
+        parser = QqParser(allowed_tags={'chapter', 'section', 'subsection',
+                                        'subsubsection', 'eq',
                                         'eqref', 'ref', 'equation',
                                         'label', 'idx'})
-        doc = r"""\h1
+        doc = r"""\chapter
     Hello
     \label
         h1:label
-\h2
+\section
     World
 """
         tree = parser.parse(doc)
@@ -62,8 +63,11 @@ class TestQqHtmlMethods(unittest.TestCase):
         self.assertEqual('1.1World', soup.h2.text.strip())
 
     def test_parse_html2(self):
-        parser = QqParser(allowed_tags={'h1', 'h2', 'h3', 'h4', 'eq', 'eqref', 'ref', 'equation', 'label', 'idx'})
-        doc = r"""\h1 \label h1:label
+        parser = QqParser(allowed_tags={'chapter', 'section',
+                                        'subsection', 'subsubsection',
+                                        'eq', 'eqref', 'ref',
+                                        'equation', 'label', 'idx'})
+        doc = r"""\chapter \label h1:label
     Hello
 
 This is a \ref{h1:label}.
@@ -127,14 +131,14 @@ See \ref{eq:one} and \ref{eq:two}
         parser = QqParser(allowed_tags=html.uses_tags())
         parser.allowed_tags.add('author')
         doc = r"""\author Ilya V. Schurov
-\h1 Chapter 1
+\chapter Chapter 1
 This is the first chapter
 \equation \label eq1
     x^2 + y^2
 
-\h1 Chapter 2
+\chapter Chapter 2
 This is the second chapter
-\h2 Section 1
+\section Section 1
 Hello
 \remark \label rem
     This is the end. \ref{eq1}
@@ -148,7 +152,7 @@ Hello
         self.assertEqual(html.tag2chapter(tree._remark._ref), 2)
 
     def test_ref_with_separator(self):
-        doc = r"""\h1 Hello \label sec:first
+        doc = r"""\chapter Hello \label sec:first
 
 See \ref[section][sec:first] for details.
 """
@@ -163,9 +167,9 @@ See \ref[section][sec:first] for details.
         self.assertEqual(soup("a")[1].string, "section 1")
 
     def test_refs_with_separator(self):
-        doc = r"""\h1 Hello \label sec:first
+        doc = r"""\chapter Hello \label sec:first
 
-\h1 World \label sec:other
+\chapter World \label sec:other
 
 See
 \ref[section][sec:first] and \ref[section][sec:other] for details.

@@ -12,6 +12,7 @@ import urllib.parse
 from mako.template import Template
 from fuzzywuzzy import process
 import html
+from typing import Union, Optional
 
 import matplotlib
 matplotlib.use('Agg')
@@ -84,11 +85,11 @@ plotly = None
 
 class PlotlyPlotter(object):
     _first = True
-    def __init__(self):
 
+    def __init__(self):
         self.buffer = []
 
-    def plot(self, figure_or_data):
+    def plot(self, figure_or_data) -> None:
         self.buffer.append(
             plotly.offline.plot(figure_or_data, show_link=False,
                                 validate=True, output_type='div',
@@ -96,7 +97,7 @@ class PlotlyPlotter(object):
         )
         PlotlyPlotter._first = False
 
-    def get_data(self):
+    def get_data(self) -> str:
         ret = "".join(self.buffer)
         self.buffer.clear()
         return ret
@@ -105,14 +106,21 @@ class PlotlyPlotter(object):
 def rstrip_p(s: str) -> str:
     return re.sub(r"(\s*</?p>\s*)+$", "", s)
 
+def spawn_or_create_counter(parent: Optional[Counter]):
+    if parent is not None:
+        return parent.spawn_child()
+    else:
+        return Counter()
 
 class QqHTMLFormatter(object):
 
-    def __init__(self, root: QqTag=None):
+    def __init__(self, root: QqTag=None, with_chapters=True):
 
         self.templates_dir = os.path.join(
             os.path.dirname(os.path.realpath(__file__)),
             "templates")
+
+        self.with_chapters = with_chapters
 
         self.label2number = {}
         self.label2title = {}
@@ -122,22 +130,38 @@ class QqHTMLFormatter(object):
         self.root = root
         self.counters = {}
         self.chapters = []
-
+        self.heading2level = {'chapter':1,
+                             'section':2,
+                             'subsection':3,
+                             'subsubsection':4}
 
         self.mode = 'wholedoc'
         #: how to render the doc? the following options are available:
         #: - 'wholedoc' - the whole document on one page
         #: - 'bychapters' - every chapter on its own page
 
-        self.counters['h1'] = Counter()
-        self.counters['h2'] = self.counters['h1'].spawn_child()
-        self.counters['h3'] = self.counters['h2'].spawn_child()
-        self.counters['h4'] = self.counters['h3'].spawn_child()
+        chapters_counter = None
+        if with_chapters:
+            chapters_counter = Counter()
+            self.counters['chapter'] = chapters_counter
 
-        self.counters['equation'] = self.counters['h1'].spawn_child()
+        self.counters['section'] = spawn_or_create_counter(
+            chapters_counter)
+
+        self.counters['subsection'] = (self.counters['section'].
+                                       spawn_child())
+        self.counters['subsubsection'] = (self.counters['subsection'].
+                                          spawn_child())
+
+
+        self.counters['equation'] = spawn_or_create_counter(
+            chapters_counter)
         self.counters['equation'].showparents = True
+
         self.counters['item'] = {'align': self.counters['equation']}
-        self.counters['figure'] = self.counters['h1'].spawn_child()
+        self.counters['figure'] = spawn_or_create_counter(chapters_counter)
+
+
 
         self.enumerateable_envs = {name: name.capitalize()
                                    for name in ['remark', 'theorem',
@@ -168,7 +192,7 @@ class QqHTMLFormatter(object):
         self.formulaenvs = {'eq', 'equation', 'align'}
 
         for env in self.enumerateable_envs:
-            self.counters[env] = self.counters['h1'].spawn_child()
+            self.counters[env] = spawn_or_create_counter(chapters_counter)
             self.counters[env].showparents = False
 
         self.figures_dir = None
@@ -201,18 +225,17 @@ class QqHTMLFormatter(object):
 
         self.safe_tags = (set(self.enumerateable_envs) |
                           set(self.formulaenvs) |
-                          {'h1', 'h2', 'h3', 'h4',
-                           'item', 'figure', 'label',
+                          {'item', 'figure', 'label',
                            'number', 'ref', 'nonumber',
                            'snref', 'snippet', 'flabel',
                            'name', 'proof', 'outline', 'of',
                            'caption', 'showcode', 'collapsed',
                            'hidden', 'backref', 'label', 'em',
                            'emph', 'quiz', 'choice', 'correct',
-                           'comment'})
+                           'comment'} |
+                          set(self.heading2level))
 
-
-    def url_for_figure(self, s):
+    def url_for_figure(self, s: str):
         """
         Override it to use flask.url_for
         :param s:
@@ -247,7 +270,7 @@ class QqHTMLFormatter(object):
                     path, self.default_figname + "." + ext))
         return os.path.join(prefix, hashsum)
 
-    def make_plotly_fig(self, code):
+    def make_plotly_fig(self, code: str) -> str:
         global plotly
         if plotly is None:
             import plotly
@@ -262,11 +285,11 @@ class QqHTMLFormatter(object):
                                  "latest.min.js'></script>")
         return self.plotly_plotter.get_data()
 
-    def uses_tags(self):
+    def uses_tags(self) -> set:
         members = inspect.getmembers(self, predicate=inspect.ismethod)
         handles = [member for member in members
                    if member[0].startswith("handle_") or
-                      member[0] == 'preprocess']
+                      member[0] == 'make_numbers']
         alltags = set([])
         for handle in handles:
             if handle[0].startswith("handle_"):
@@ -283,14 +306,14 @@ class QqHTMLFormatter(object):
         alltags.update(self.enumerateable_envs.keys())
         return alltags
 
-    def localize(self, s):
+    def localize(self, s: str) -> str:
         return self.localnames.get(s, s)
 
-    def handle(self, tag):
+    def handle(self, tag: QqTag) -> str:
         name = tag.name
         default_handler = 'handle_'+name
-        if re.match(r"h\d$",name):
-            return self.handle_h(tag)
+        if name in self.heading2level:
+            return self.handle_heading(tag)
         elif name in self.enumerateable_envs:
             return self.handle_enumerateable(tag)
         elif hasattr(self, default_handler):
@@ -298,17 +321,17 @@ class QqHTMLFormatter(object):
         else:
             return ""
 
-    def blanks_to_pars(self, s, keep_end_pars=True):
+    def blanks_to_pars(self, s: str, keep_end_pars=True) -> str:
         if not keep_end_pars:
             s = s.rstrip()
 
         return re.sub(r"\n\s*\n", "\n</p>\n<p>\n", s)
 
-
-    def label2id(self, label):
+    def label2id(self, label: str) -> str:
         return "label_" + mk_safe_css_ident(label.strip())
 
-    def format(self, content, blanks_to_pars=True,
+    def format(self, content: Optional[QqTag],
+               blanks_to_pars=True,
                keep_end_pars=True) -> str:
         """
         :param content: could be QqTag or any iterable of QqTags
@@ -332,21 +355,28 @@ class QqHTMLFormatter(object):
                 out.append(self.handle(child))
         return "".join(out)
 
-    def handle_h(self, tag: QqTag) -> str:
+    def handle_heading(self, tag: QqTag) -> str:
         """
-        Uses tags: h1, h2, h3, h4, label, number
+        Uses tags: chapter, section, subsection, subsubsection, label, number
 
         Example:
 
-            \h1 This is first header
+            \chapter This is first header
 
-            \h2 This is the second header \label{sec:second}
+            \section This is the second header \label{sec:second}
 
         :param tag:
         :return:
         """
+        tag_to_hx = {
+            'chapter':'h1',
+            'section':'h2',
+            'subsection':'h3',
+            'subsubsection':'h4'
+        }
+
         doc, html, text = Doc().tagtext()
-        with html(tag.name):
+        with html(tag_to_hx[tag.name]):
             doc.attr(id=self.tag_id(tag))
             if tag.find("number"):
                 with html("span", klass="section__number"):
@@ -566,7 +596,7 @@ ${formatter.format(item, blanks_to_pars=False)}
             doc.asis(self.format(title, blanks_to_pars=True))
         return doc.getvalue()
 
-    def handle_href(self, tag: QqTag):
+    def handle_href(self, tag: QqTag) -> str:
         """
         Example:
 
@@ -583,7 +613,7 @@ ${formatter.format(item, blanks_to_pars=False)}
             doc.asis(self.format(a.strip(), blanks_to_pars=False))
         return doc.getvalue()
 
-    def url_for_snippet(self, label):
+    def url_for_snippet(self, label: str) -> str:
         """
         Returns url for snippet by label.
 
@@ -605,7 +635,7 @@ ${formatter.format(item, blanks_to_pars=False)}
         """
         return self.handle_ref(tag)
 
-    def handle_enumerateable(self, tag):
+    def handle_enumerateable(self, tag: QqTag) -> str:
         """
         Uses tags: label, number, name
         Add tags used manually from enumerateable_envs
@@ -665,7 +695,7 @@ ${formatter.format(item, blanks_to_pars=False)}
             doc.asis("<span class='end-of-proof'>&#8718;</span>")
         return doc.getvalue()+"\n<p>"
 
-    def handle_paragraph(self, tag: QqTag):
+    def handle_paragraph(self, tag: QqTag) -> str:
         """
         :param tag:
         :return:
@@ -675,14 +705,15 @@ ${formatter.format(item, blanks_to_pars=False)}
             doc.asis(self.format(tag, blanks_to_pars=False).strip() + ".")
         return "<p>" + doc.getvalue()+" "
 
-    def handle_list(self, tag: QqTag, type):
+    def handle_list(self, tag: QqTag, type: str) -> str:
         doc, html, text = Doc().tagtext()
         with html(type):
             for item in tag("item"):
                 with html("li"):
                     doc.asis(self.format(item))
         return doc.getvalue()
-    def handle_enumerate(self, tag: QqTag):
+
+    def handle_enumerate(self, tag: QqTag) -> str:
         """
         Uses tags: item
         :param tag:
@@ -690,7 +721,7 @@ ${formatter.format(item, blanks_to_pars=False)}
         """
         return self.handle_list(tag, "ol")
 
-    def handle_itemize(self, tag: QqTag):
+    def handle_itemize(self, tag: QqTag) -> str:
         """
         Uses tags: item
         :param tag:
@@ -772,7 +803,7 @@ ${formatter.format(item, blanks_to_pars=False)}
     def handle_plotly(self, tag: QqTag) -> str:
         return "".join(self.make_plotly_fig(tag.text_content))
 
-    def showcode(self, tag: QqTag, collapsed = False, lang = None) -> str:
+    def showcode(self, tag: QqTag, collapsed=False, lang=None) -> str:
         """
         <button class="source toggle btn btn-xs btn-primary">
 <span class="glyphicon glyphicon-chevron-up"></span>
@@ -884,9 +915,7 @@ ${formatter.format(item, blanks_to_pars=False)}
         """
         return self.handle_em(tag)
 
-
-
-    def get_counter_for_tag(self, tag: QqTag) -> Counter:
+    def get_counter_for_tag(self, tag: QqTag) -> Optional[Counter]:
         name = tag.name
         counters = self.counters
         while True:
@@ -904,7 +933,7 @@ ${formatter.format(item, blanks_to_pars=False)}
                 continue
             return None
 
-    def preprocess(self, root: QqTag):
+    def make_numbers(self, root: QqTag) -> None:
         """
         Uses tags: number, label, nonumber, flabel
 
@@ -931,17 +960,20 @@ ${formatter.format(item, blanks_to_pars=False)}
                     self.label2tag[tag._label.value] = tag
                 if tag.find('flabel'):
                     self.flabel2tag[tag._flabel.value.lower()] = tag
-                self.preprocess(tag)
+                self.make_numbers(tag)
 
-    def find_tag_by_flabel(self, s):
+    def find_tag_by_flabel(self, s: str) -> str:
         flabel = process.extractOne(s.lower(), self.flabel2tag.keys())[0]
         return self.flabel2tag.get(flabel)
 
     def mk_chapters(self):
+        assert self.root is not None, ("Trying to make chapters "
+                                       "of empty document")
         curchapter = Chapter(QqTag("_zero_chapter"),  [])
         self.chapters = []
+
         for tag in self.root:
-            if isinstance(tag, QqTag) and tag.name == 'h1':
+            if isinstance(tag, QqTag) and tag.name == 'chapter':
                 self.add_chapter(curchapter)
                 curchapter = Chapter(tag, [])
             curchapter.content.append(tag)
@@ -951,18 +983,19 @@ ${formatter.format(item, blanks_to_pars=False)}
         """
         Returns the number of chapter to which tag belongs.
 
-        Chapters are separated by `h1` tag. Chapter before the first `h1`
+        Chapters are separated by `chapter` tag.
+        Chapter before the first `chapter`
         tag has number zero.
 
         :param tag:
         :return:
         """
 
-        eva = tag.get_eva()
-        headers = self.root("h1")
+        eve = tag.get_eve()
+        headers = self.root("chapter")
         i = 0
         for i, header in enumerate(headers, 1):
-            if eva.index < header.index:
+            if eve.index < header.index:
                 return i - 1
         return i
 
@@ -998,17 +1031,17 @@ ${formatter.format(item, blanks_to_pars=False)}
         return "/chapter/label/" + urllib.parse.quote(label)
 
 
-    def add_chapter(self, chapter):
+    def add_chapter(self, chapter: Chapter) -> None:
         if chapter.header.find("label"):
             self.label2chapter[chapter.header._label.value] = len(
                 self.chapters)
         self.chapters.append(chapter)
 
-    def do_format(self):
-        self.preprocess(self.root)
+    def do_format(self) -> str:
+        self.make_numbers(self.root)
         return self.format(self.root, blanks_to_pars=True)
 
-    def tag_id(self, tag) -> str:
+    def tag_id(self, tag: QqTag) -> str:
         """
         Returns id of tag:
         - If it has label, it is label-based
@@ -1039,17 +1072,19 @@ ${formatter.format(item, blanks_to_pars=False)}
         curlevel = 1
 
         curchapter = 0
-        # chapter before first h1 has index 0
+        # chapter before first `chapter` has index 0
+
+        assert self.root is not None
 
         with html("ul", klass="nav"):
             for child in self.root:
                 chunk = []
                 if isinstance(child, QqTag):
                     m = re.match(r'h(\d)', child.name)
-                    if m:
-                        hlevel = int(m.group(1))
+                    if child.name in self.heading2level:
+                        hlevel = self.heading2level[child.name]
 
-                        # h1 header marks new chapter, so increase
+                        # `chapter` header marks new chapter, so increase
                         # curchapter counter
                         if hlevel == 1:
                             curchapter += 1
@@ -1079,7 +1114,7 @@ ${formatter.format(item, blanks_to_pars=False)}
                         doc.asis("".join(chunk))
         return doc.getvalue()
 
-    def tag_hash_id(self, tag):
+    def tag_hash_id(self, tag: QqTag) -> str:
         """
         Returns autogenerated tag id based on tag's contents.
         It's first 5 characters of MD5-hashsum of tag's content
@@ -1088,7 +1123,7 @@ ${formatter.format(item, blanks_to_pars=False)}
         return hashlib.md5(
             repr(tag.as_list()).encode('utf-8')).hexdigest()[:5]
 
-    def handle_quiz(self, tag: QqTag):
+    def handle_quiz(self, tag: QqTag) -> str:
         """
         Uses tags: choice, correct, comment
 
@@ -1113,8 +1148,5 @@ ${formatter.format(item, blanks_to_pars=False)}
                                                   "quiz.html"))
         return template.render(formatter=self, tag=tag)
 
-    def handle_rawhtml(self, tag: QqTag):
+    def handle_rawhtml(self, tag: QqTag) -> str:
         return tag.text_content
-
-
-

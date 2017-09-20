@@ -18,8 +18,6 @@ from flask_frozen import Freezer
 scriptdir = os.path.dirname(os.path.realpath(__file__))
 curdir = os.getcwd()
 
-print(scriptdir)
-
 app = Flask(__name__, static_url_path='')
 
 app.config['mjpage'] = os.path.join(
@@ -49,6 +47,7 @@ app.config['MATHJAX_ALLTHEBOOK'] = False
 
 app.debug = True
 allthebook = None
+app.config['FILE'] = None
 
 class QqFlaskHTMLFormatter(QqHTMLFormatter):
 
@@ -83,7 +82,7 @@ def send_asset(path):
 @app.route("/preview/<filename>")
 def show_html(filename):
     path = filename
-    if not os.path.isfile(path):
+    if not os.path.isfile(app.config['FILE']):
         abort(404)
     with open(path) as f:
         lines = f.readlines()
@@ -149,7 +148,7 @@ def show_allthebook():
     return render_template("preview.html", html=allthebook)
 
 def prepare_book():
-    path = os.path.join(curdir, 'index.qq')
+    path = os.path.join(curdir, app.config['FILE'])
     if not os.path.isfile(path):
         abort(404)
     with open(path) as f:
@@ -171,7 +170,7 @@ def prepare_book():
     formatter.code_prefixes['plotly'] = formatter.code_prefixes.get('plotly',"") + "import numpy as np\n\n"
 
     formatter.mode = 'bychapters'
-    formatter.preprocess(tree)
+    formatter.make_numbers(tree)
     formatter.mk_chapters()
 
     # dirty hack to get equation snippet work
@@ -311,11 +310,40 @@ def build():
     app.config['FREEZER_DESTINATION'] = os.path.join(curdir, "build")
     freezer.freeze()
 
+@register_command
+def convert():
+    path = os.path.join(curdir, app.config['FILE'])
+    with open(path) as f:
+        lines = f.readlines()
+
+    formatter = QqHTMLFormatter()
+    parser = QqParser(allowed_tags=formatter.uses_tags())
+
+    tree = None
+    try:
+        tree = parser.parse(lines)
+    except Exception as e:
+        print("Parse error:", str(e))
+        raise
+
+    formatter.root = tree
+    try:
+        output = formatter.do_format()
+    except Exception as e:
+        print("Formatting error:", str(e))
+        raise
+    print(output)
+
 def main():
     argparser = argparse.ArgumentParser()
     argparser.add_argument("command",
                            help="command to invoke: preview or build")
+    argparser.add_argument("file",
+                           help="File to proceed",
+                           default="index.qq",
+                           nargs='?')
     args = argparser.parse_args()
+    app.config['FILE'] = args.file
     if args.command in commands:
         commands[args.command]()
     else:

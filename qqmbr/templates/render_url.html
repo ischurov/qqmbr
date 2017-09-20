@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ title | default("qqmath example") }}</title>
+</head>
+<body>
+    <script   src="https://code.jquery.com/jquery-3.2.1.min.js"   integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4="   crossorigin="anonymous"></script>
+
+    <!-- Latest compiled and minified CSS -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
+
+    <!-- Optional theme -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap-theme.min.css" integrity="sha384-rHyoN1iRsVXV4nD0JutlnGaslCJuC7uwjduW9SVrLvRYooPp2bWYgmgJQIXwl/Sp" crossorigin="anonymous">
+
+    <!-- Latest compiled and minified JavaScript -->
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
+    <style>
+        .CodeMirror {
+            border: 1px solid lightgray;
+            margin-top: 1em;
+            height: 90vh;
+        }
+
+        span.env-title, span.paragraph {
+            font-weight: bold;
+        }
+
+        span.section__number {
+            float: right;
+            color: #aaaaaa;
+            margin-left: 2em;
+        }
+
+        a.section__number {
+            color: #aaaaaa;
+        }
+
+        #output {
+            overflow-y: scroll;
+            height: 90vh;
+            border: 1px solid lightgray;
+            margin-top: 1em;
+        }
+
+
+    </style>
+    <script src="{{ rootdir | default("") }}/assets/js/mathjax/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <script type="text/x-mathjax-config">
+  MathJax.Hub.Config({
+    extensions: ["tex2jax.js"],
+    jax: ["input/TeX", "output/HTML-CSS"],
+    tex2jax: {
+      inlineMath: [ ['$','$'], ["\\(","\\)"] ],
+      displayMath: [ ["\\[","\\]"] ],
+      processEscapes: true
+    },
+    "HTML-CSS": { availableFonts: ["TeX"] }
+  });
+</script>
+<div class="container">
+    <div class="row">
+        <div class="col-md-8 col-md-offset-2" style="padding-bottom: 5em;">
+        {{ output | safe }}
+        </div>
+    </div>
+</div>
+<footer class="navbar-default navbar-fixed-bottom" style="border-top-color: #cccccc; border-style: solid;">
+  <div class="container text-center" style="padding-top: 10px;">
+      <p class="text-muted credit">Rendered by <a href="https://github.com/ischurov/qqmbr">qqmbr</a>
+        from publicly accessible </a><a href="{{ source_url }}">source code</a>. © The author of the source code.</p>
+  </div>
+</footer>
+</body>
+</html>

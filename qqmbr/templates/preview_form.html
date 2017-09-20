@@ -71,8 +71,8 @@
     <div class="row">
         <div class="col-md-6">
             <form>
-                <textarea name="text" cols="100" id="code">\h1 Euler's formula
-\h2 Complex numbers \label sec:comlex
+                <textarea name="text" cols="100" id="code">\chapter Euler's formula
+\section Complex numbers \label sec:comlex
 
 One can introduce \em{complex numbers} by considering so-called \em{imaginary unit} $i$, such that:
 \equation \label eq:i
@@ -80,7 +80,7 @@ One can introduce \em{complex numbers} by considering so-called \em{imaginary un
 \definition
     \emph{Complex number} is a number of a form $x+iy$, where $x, y \in \mathbb R$.
 
-\h2 Exponent of complex number \label sec:exp
+\section Exponent of complex number \label sec:exp
 \theorem \label thm:1
     Let $x$ be a real number. Then
     \equation \label eq:main
@@ -106,7 +106,7 @@ One can introduce \em{complex numbers} by considering so-called \em{imaginary un
 
     This finished the proof of \ref[Euler's formula\nonumber][thm:1].
 
-\h1 Corollary
+\chapter Corollary
 
 It follows from \ref[Theorem][thm:1] from \ref[Section][sec:exp] that
 \eq
@@ -189,6 +189,7 @@ Therefore,
                 {
                     url: "{{ url_for('render') }}",
                     data: {text: text},
+                    method: 'post',
                     success: function(result) {
                         if (!result.error) {
                             $("#output").html(result.output);
