@@ -20,7 +20,7 @@ prefixes = [
     ('https://gist.github.com/', 'gist/',
      'https://gist.githubusercontent.com/'),
     ('https://', 'https/', 'https://'),
-    ('http://', 'http', 'http://')
+    ('http://', 'http/', 'http://')
 ]
 
 
@@ -56,11 +56,11 @@ def send_asset(path):
 def render(path):
     print(path_to_source_url(path))
     r = requests.get(path_to_source_url(path))
-    print(r)
+    r.encoding = 'UTF-8'
     if not r:
         abort(500)
 
-    formatter = QqHTMLFormatter()
+    formatter = QqHTMLFormatter(with_chapters=False)
 
     formatter.localnames = {}
 
@@ -68,6 +68,8 @@ def render(path):
     try:
         tree = parser.parse(r.text)
     except Exception as e:
+        if app.debug:
+            raise e
         return render_template("error.html",
                                error='parse error: ' + str(e)), 400
 
@@ -75,11 +77,17 @@ def render(path):
     try:
         output = formatter.do_format()
     except Exception as e:
+        if app.debug:
+            raise e
         return render_template("error.html",
-                               error='parse error: ' + str(e)), 400
-    print(path_to_url(path))
+                               error='format error: ' + str(e)), 400
+
+    meta = tree.find_or_empty("meta")
+    print(meta.as_list())
+
     return render_template("render_url.html", output=output,
-                           source_url=path_to_url(path))
+                           source_url=path_to_url(path),
+                           meta=meta)
 
 @app.route('/', methods=['GET', 'POST'])
 def showform():

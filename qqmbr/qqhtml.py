@@ -161,8 +161,6 @@ class QqHTMLFormatter(object):
         self.counters['item'] = {'align': self.counters['equation']}
         self.counters['figure'] = spawn_or_create_counter(chapters_counter)
 
-
-
         self.enumerateable_envs = {name: name.capitalize()
                                    for name in ['remark', 'theorem',
                                                 'example', 'exercise',
@@ -170,24 +168,31 @@ class QqHTMLFormatter(object):
                                                 'proposition', 'lemma',
                                                 'question', 'corollary']}
 
+        self.metatags = {'meta', 'author', 'affiliation', 'project',
+                         'license', 'title', 'url', 'lang'}
+
         # You can make self.localnames = {} to use
         # plain English localization
 
-        self.localnames = {
-            'Remark': 'Замечание',
-            'Theorem': 'Теорема',
-            'Example': 'Пример',
-            'Exercise': 'Упражнение',
-            'Definition': 'Определение',
-            'Proposition': 'Утверждение',
-            'Lemma': 'Лемма',
-            'Proof': 'Доказательство',
-            'Proof outline': 'Набросок доказательства',
-            'Figure': 'Рисунок',
-            'Fig.': "Рис.",
-            'Question': 'Вопрос',
-            'Corollary': 'Следствие',
+        self.localizations = {
+            'ru': {
+                'Remark': 'Замечание',
+                'Theorem': 'Теорема',
+                'Example': 'Пример',
+                'Exercise': 'Упражнение',
+                'Definition': 'Определение',
+                'Proposition': 'Утверждение',
+                'Lemma': 'Лемма',
+                'Proof': 'Доказательство',
+                'Proof outline': 'Набросок доказательства',
+                'Figure': 'Рисунок',
+                'Fig.': "Рис.",
+                'Question': 'Вопрос',
+                'Corollary': 'Следствие',
+            }
         }
+
+        self.localnames = None
 
         self.formulaenvs = {'eq', 'equation', 'align'}
 
@@ -233,7 +238,8 @@ class QqHTMLFormatter(object):
                            'hidden', 'backref', 'label', 'em',
                            'emph', 'quiz', 'choice', 'correct',
                            'comment'} |
-                          set(self.heading2level))
+                          set(self.heading2level) |
+                          self.metatags)
 
     def url_for_figure(self, s: str):
         """
@@ -304,9 +310,14 @@ class QqHTMLFormatter(object):
                     tags = [tag.strip() for tag in tags]
                     alltags.update(tags)
         alltags.update(self.enumerateable_envs.keys())
+        alltags.update(self.metatags)
         return alltags
 
     def localize(self, s: str) -> str:
+        if not self.localnames:
+            self.localnames = self.localizations.get(
+                self.root.meta_.get('lang'), {}
+            )
         return self.localnames.get(s, s)
 
     def handle(self, tag: QqTag) -> str:
@@ -357,7 +368,8 @@ class QqHTMLFormatter(object):
 
     def handle_heading(self, tag: QqTag) -> str:
         """
-        Uses tags: chapter, section, subsection, subsubsection, label, number
+        Uses tags: chapter, section, subsection, subsubsection
+        Uses tags: label, number
 
         Example:
 
@@ -382,7 +394,7 @@ class QqHTMLFormatter(object):
                 with html("span", klass="section__number"):
                     with html("a", href="#"+self.tag_id(tag),
                               klass="section__number"):
-                        text(tag._number.value)
+                        text(tag.number_.value)
             doc.asis(self.format(tag, blanks_to_pars=False))
         ret = doc.getvalue()
         if tag.next() and isinstance(tag.next(), str):
@@ -427,9 +439,9 @@ class QqHTMLFormatter(object):
             text("\\[\n")
             text("\\begin{equation}\n")
             if tag.find('number'):
-                text("\\tag{{{}}}\n".format(tag._number.value))
+                text("\\tag{{{}}}\n".format(tag.number_.value))
             if tag.find('label'):
-                doc.attr(id=self.label2id(tag._label.value))
+                doc.attr(id=self.label2id(tag.label_.value))
             doc.asis(self.format(tag, blanks_to_pars=False))
             text("\\end{equation}\n")
             text("\\]\n")
@@ -456,7 +468,7 @@ class QqHTMLFormatter(object):
 % for i, item in enumerate(items):
 ${formatter.format(item, blanks_to_pars=False)}
 % if item.exists("number"):
-\tag{${item._number.value}}
+\tag{${item.number_.value}}
 % endif
 % if i != len(items):
 \\\
@@ -582,7 +594,7 @@ ${formatter.format(item, blanks_to_pars=False)}
         if tag.is_simple:
             title = tag.value.replace("\n", " ")
             target = self.find_tag_by_flabel(title)
-            label = target._label.value
+            label = target.label_.value
         else:
             if len(tag) != 2:
                 raise Exception("Incorrect number of arguments in "
@@ -648,13 +660,13 @@ ${formatter.format(item, blanks_to_pars=False)}
         env_localname = self.localize(self.enumerateable_envs[name])
         with html("div", klass="env env__" + name):
             if tag.find("label"):
-                doc.attr(id=self.label2id(tag._label.value))
+                doc.attr(id=self.label2id(tag.label_.value))
 
             number = tag.get("number", "")
             with html("span", klass="env-title env-title__" + name):
                 if tag.find("label"):
                     with html("a", klass="env-title env-title__" + name,
-                              href="#" + self.label2id(tag._label.value)):
+                              href="#" + self.label2id(tag.label_.value)):
                         text(join_nonempty(env_localname, number) + ".")
                 else:
                     text(join_nonempty(env_localname, number) + ".")
@@ -680,7 +692,7 @@ ${formatter.format(item, blanks_to_pars=False)}
         doc, html, text = Doc().tagtext()
         with html("div", klass="env env__proof"):
             if tag.find("label"):
-                doc.attr(id=self.label2id(tag._label.value))
+                doc.attr(id=self.label2id(tag.label_.value))
             with html("span", klass="env-title env-title__proof"):
                 if tag.exists("outline"):
                     proofline = 'Proof outline'
@@ -754,8 +766,8 @@ ${formatter.format(item, blanks_to_pars=False)}
                  'rawhtml': 'html'}
         with html("div", klass="figure"):
             if tag.find("label"):
-                doc.attr(id=self.label2id(tag._label.value))
-                label = tag._label.value
+                doc.attr(id=self.label2id(tag.label_.value))
+                label = tag.label_.value
             else:
                 label = None
             for child in tag:
@@ -797,7 +809,7 @@ ${formatter.format(item, blanks_to_pars=False)}
                   src=self.url_for_figure(
                         path + "/" + self.default_figname + ".svg")):
             if tag.exists("style"):
-                doc.attr(style=tag._style.value)
+                doc.attr(style=tag.style_.value)
         return doc.getvalue()
 
     def handle_plotly(self, tag: QqTag) -> str:
@@ -885,7 +897,7 @@ ${formatter.format(item, blanks_to_pars=False)}
         anchor = ""
         if not tag.exists("backref") and tag.exists("label"):
             anchor = "<span id='{}'></span>".format(
-                self.label2id(tag._label.value))
+                self.label2id(tag.label_.value))
         if tag.exists("hidden"):
             return anchor
         return anchor + self.format(tag, blanks_to_pars=True)
@@ -951,15 +963,15 @@ ${formatter.format(item, blanks_to_pars=False)}
                         counter.increase()
                         tag.append_child(QqTag({'number': str(counter)}))
                         if tag.find('label'):
-                            label = tag._label.value
+                            label = tag.label_.value
                             self.label2number[label] = str(counter)
                             # self.label2title[label] = tag.text_content
                 if tag.find('label') and tag.find('number'):
-                    self.label2number[tag._label.value] = tag._number.value
+                    self.label2number[tag.label_.value] = tag.number_.value
                 if tag.find('label'):
-                    self.label2tag[tag._label.value] = tag
+                    self.label2tag[tag.label_.value] = tag
                 if tag.find('flabel'):
-                    self.flabel2tag[tag._flabel.value.lower()] = tag
+                    self.flabel2tag[tag.flabel_.value.lower()] = tag
                 self.make_numbers(tag)
 
     def find_tag_by_flabel(self, s: str) -> str:
@@ -1030,10 +1042,9 @@ ${formatter.format(item, blanks_to_pars=False)}
     def url_for_chapter_by_label(self, label):
         return "/chapter/label/" + urllib.parse.quote(label)
 
-
     def add_chapter(self, chapter: Chapter) -> None:
         if chapter.header.find("label"):
-            self.label2chapter[chapter.header._label.value] = len(
+            self.label2chapter[chapter.header.label_.value] = len(
                 self.chapters)
         self.chapters.append(chapter)
 
@@ -1050,10 +1061,10 @@ ${formatter.format(item, blanks_to_pars=False)}
         :return: str id
         """
         if tag.find("label"):
-            return self.label2id(tag._label.value)
+            return self.label2id(tag.label_.value)
         elif tag.find("number"):
             return (self.label2id(tag.name+"_number_" +
-                                  str(tag._number.value)))
+                                  str(tag.number_.value)))
         else:
             return ""
 
@@ -1150,3 +1161,40 @@ ${formatter.format(item, blanks_to_pars=False)}
 
     def handle_rawhtml(self, tag: QqTag) -> str:
         return tag.text_content
+
+    def handle_meta(self, tag: QqTag) -> str:
+        return self.format(tag, blanks_to_pars=False) + "\n<hr/>"
+
+    def handle_author(self, tag: QqTag) -> str:
+        doc, html, text = Doc().tagtext()
+        with html("p", klass="meta meta-author"):
+            doc.asis(self.format(tag, blanks_to_pars=False))
+        return doc.getvalue()
+
+    def handle_affiliation(self, tag: QqTag) -> str:
+        doc, html, text = Doc().tagtext()
+        with html("span", klass="meta meta-author meta-author-affiliation"):
+            doc.asis(" (" + self.format(tag, blanks_to_pars=False) + ")")
+        return doc.getvalue()
+
+    def handle_project(self, tag: QqTag) -> str:
+        doc, html, text = Doc().tagtext()
+        with html("p", klass="meta meta-project"):
+            if tag.exists("url"):
+                with html("a", href=tag.url_.value):
+                    doc.asis(self.format(tag, blanks_to_pars=False))
+            else:
+                doc.asis(self.format(tag, blanks_to_pars=False))
+        return doc.getvalue()
+
+    def handle_title(self, tag: QqTag) -> str:
+        doc, html, text = Doc().tagtext()
+        with html("h1", klass="meta meta-title"):
+            doc.asis(self.format(tag, blanks_to_pars=False))
+        return doc.getvalue()
+
+    def handle_subtitle(self, tag: QqTag) -> str:
+        doc, html, text = Doc().tagtext()
+        with html("h2", klass="meta meta-subtitle"):
+            doc.asis(self.format(tag, blanks_to_pars=False))
+        return doc.getvalue()

@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>{{ title | default("qqmath example") }}</title>
+    <title>{{ meta.get("title") | default("qqmath example") }}</title>
 </head>
 <body>
     <script   src="https://code.jquery.com/jquery-3.2.1.min.js"   integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4="   crossorigin="anonymous"></script>
@@ -36,11 +36,8 @@
             color: #aaaaaa;
         }
 
-        #output {
-            overflow-y: scroll;
-            height: 90vh;
-            border: 1px solid lightgray;
-            margin-top: 1em;
+        .meta-author {
+            font-style: italic;
         }
 
 
@@ -61,6 +58,7 @@
 <div class="container">
     <div class="row">
         <div class="col-md-8 col-md-offset-2" style="padding-bottom: 5em;">
+
         {{ output | safe }}
         </div>
     </div>
@@ -68,7 +66,7 @@
 <footer class="navbar-default navbar-fixed-bottom" style="border-top-color: #cccccc; border-style: solid;">
   <div class="container text-center" style="padding-top: 10px;">
       <p class="text-muted credit">Rendered by <a href="https://github.com/ischurov/qqmbr">qqmbr</a>
-        from publicly accessible </a><a href="{{ source_url }}">source code</a>. © The author of the source code.</p>
+        from publicly available </a><a href="{{ source_url }}">source code</a>. © {{ meta.find_or_empty("author").text_content | default("The author(s) of the source code", true)}}.</p>
   </div>
 </footer>
 </body>
