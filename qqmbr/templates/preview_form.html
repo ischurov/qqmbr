@@ -189,7 +189,7 @@ Therefore,
                 {
                     url: "{{ url_for('render') }}",
                     data: {text: text},
-                    method: 'post',
+                    method: 'POST',
                     success: function(result) {
                         if (!result.error) {
                             $("#output").html(result.output);
