@@ -42,8 +42,8 @@ You are welcome to participate with pull requests and issue-reporting.
 
 This is an example of **qqmbr** markup. See [live demo](http://math-info.hse.ru/qqmathpreview).
 
-    \h1 Euler's formula
-    \h2 Complex numbers \label sec:comlex
+    \chapter Euler's formula
+    \section Complex numbers \label sec:comlex
     
     One can introduce \em{complex numbers} by considering so-called \em{imaginary unit} $i$, such that:
     \equation \label eq:i
@@ -51,7 +51,7 @@ This is an example of **qqmbr** markup. See [live demo](http://math-info.hse.ru/
     \definition
         \emph{Complex number} is a number of a form $x+iy$, where $x, y \in \mathbb R$.
     
-    \h2 Exponent of complex number \label sec:exp
+    \section Exponent of complex number \label sec:exp
     \theorem \label thm:1
         Let $x$ be real number. Then
         \equation \label eq:main
@@ -77,7 +77,7 @@ This is an example of **qqmbr** markup. See [live demo](http://math-info.hse.ru/
     
         This finished the proof of \ref[Euler's formula\nonumber][thm:1].
     
-    \h1 Corollary
+    \chapter Corollary
     
     It follows from \ref[Theorem][thm:1] from \ref[Section][sec:exp] that
     \eq
