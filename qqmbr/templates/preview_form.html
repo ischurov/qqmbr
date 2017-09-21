@@ -50,6 +50,7 @@
         }
     </style>
     <script src="{{ rootdir | default("") }}/assets/js/mathjax/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+
     <script type="text/x-mathjax-config">
   MathJax.Hub.Config({
     extensions: ["tex2jax.js"],
@@ -184,7 +185,7 @@ Therefore,
 
         function mkpreview() {
             text = myCodeMirror.getValue();
-            console.log(text);
+
             $.ajax(
                 {
                     url: "{{ url_for('render') }}",

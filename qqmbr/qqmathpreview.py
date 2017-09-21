@@ -21,7 +21,7 @@ def send_asset(path):
 
 @app.route('/render', methods=['GET', 'POST'])
 def render():
-    text = request.args.get('text', '').replace('\r\n', '\n')
+    text = request.values.get('text', '').replace('\r\n', '\n')
     formatter = QqHTMLFormatter()
 
     formatter.localnames = {}
