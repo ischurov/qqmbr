@@ -3,7 +3,6 @@
 
 from indentml.parser import QqTag
 from yattag import Doc
-from collections import namedtuple
 import re
 import inspect
 import hashlib
@@ -11,13 +10,17 @@ import os
 import urllib.parse
 from mako.template import Template
 from fuzzywuzzy import process
-import html
-from typing import Union, Optional
+from html import escape as html_escape
+from typing import Optional, List
+from typing import (NamedTuple, TypeVar, Sequence, Tuple,
+                    Dict, Iterator, Any)
+from textwrap import indent
 
 import matplotlib
 matplotlib.use('Agg')
 
 import matplotlib.pyplot as plt
+
 
 def mk_safe_css_ident(s):
     # see http://stackoverflow.com/a/449000/3025981 for details
@@ -28,18 +31,53 @@ def mk_safe_css_ident(s):
         s = s[len(first):] + "__" + first
     return s
 
-# FROM http://stackoverflow.com/a/14364249/3025981
 
+# FROM http://stackoverflow.com/a/14364249/3025981
 def make_sure_path_exists(path):
     try:
         os.makedirs(path)
     except OSError:
         if not os.path.isdir(path):
             raise
-
 # END FROM
 
-class Counter():
+
+T = TypeVar('T')
+
+
+# BASED ON: https://stackoverflow.com/a/15358005/3025981
+def split_by_predicate(seq: Sequence[T],
+                       predicate,
+                       zero_delim: Optional[T]=None) \
+        -> Iterator[Sequence[T]]:
+    """
+    Splits a sequence by delimeters that satisfy predicate,
+    keeping the delimeters
+
+    split_by_predicate([0, "One", 1, 2, 3,
+                    "Two", 4, 5, 6, 7, "Three", "Four"],
+                    predicate=lambda x: isinstance(x, str),
+                    zero_delim="Nothing")
+
+    [["Nothing", 0], ["One", 1, 2, 3], ["Two", 4, 5, 6, 7],
+    ["Three"], ["Four"]]
+
+    :param seq: sequence to proceed
+    :param predicate: checks whether element is delimeter
+    :param zero_delim: pseudo-delimter prepended to the sequence
+    :return: sequence of sequences
+    """
+    g = [zero_delim]
+    for el in seq:
+        if predicate(el):
+            yield g
+            g = []
+        g.append(el)
+    yield g
+# END BASED
+
+
+class Counter(object):
     """
     Very simple class that support latex-style counters with subcounters.
     For example, if new section begins, the enumeration of subsections
@@ -51,8 +89,8 @@ class Counter():
 
     def __init__(self, showparents=True):
         self.value = 0
-        self.children = []
-        self.parent = None
+        self.children: List[Counter] = []
+        self.parent: Counter = None
         self.showparents = showparents
 
     def reset(self):
@@ -65,7 +103,7 @@ class Counter():
         for child in self.children:
             child.reset()
 
-    def spawn_child(self):
+    def spawn_child(self) -> 'Counter':
         newcounter = Counter()
         newcounter.parent = self
         self.children.append(newcounter)
@@ -77,11 +115,58 @@ class Counter():
             my_str = str(self.parent) + "." + my_str
         return my_str
 
+
 def join_nonempty(*args, sep=" "):
     return sep.join(x for x in args if x)
 
-Chapter = namedtuple('Chapter', ('header', 'content'))
+
+Chapter = NamedTuple('Chapter', (('heading', QqTag), ('content', List)))
+
+
+class TOCItem(object):
+    def __init__(self, tag: QqTag=None, parent: 'TOCItem'=None,
+                 level=0) -> None:
+        self.tag = tag
+        self.children: List['TOCItem'] = []
+        self.parent = parent
+        self.level = level
+
+    def __str__(self):
+        return "{}: {}\n".format(
+            self.tag and self.tag.name,
+            self.tag and self.tag.text_content
+        ) + indent("".join(str(child) for child in self.children), " " * 4)
+
+    def as_tuple(self):
+        return (self.tag and self.tag.name,
+                [child.as_tuple() for child in self.children])
+
+    def spawn_child(self, tag: QqTag=None):
+        new = TOCItem(tag, parent=self, level=self.level + 1)
+        self.children.append(new)
+        return new
+
+
+class FormattedTOCItem(object):
+    def __init__(self, tag: QqTag=None, parent: 'FormattedTOCItem'=None,
+                 string: str=None, href: str=None,
+                 iscurchapter=False) -> None:
+        self.tag = tag
+        self.parent = parent
+        self.children: List['FormattedTOCItem'] = []
+        self.string = string
+        self.href = href
+
+        self.iscurchapter = iscurchapter
+        # item is a chapter that is currently shown
+
+    def append_child(self, child: 'FormattedTOCItem'):
+        child.parent = self
+        self.children.append(child)
+
+
 plotly = None
+
 
 class PlotlyPlotter(object):
     _first = True
@@ -106,15 +191,17 @@ class PlotlyPlotter(object):
 def rstrip_p(s: str) -> str:
     return re.sub(r"(\s*</?p>\s*)+$", "", s)
 
+
 def spawn_or_create_counter(parent: Optional[Counter]):
     if parent is not None:
         return parent.spawn_child()
     else:
         return Counter()
 
-class QqHTMLFormatter(object):
 
-    def __init__(self, root: QqTag=None, with_chapters=True):
+class QqHTMLFormatter(object):
+    def __init__(self, root: QqTag=QqTag("_root"),
+                 with_chapters=True) -> None:
 
         self.templates_dir = os.path.join(
             os.path.dirname(os.path.realpath(__file__)),
@@ -122,18 +209,18 @@ class QqHTMLFormatter(object):
 
         self.with_chapters = with_chapters
 
-        self.label2number = {}
-        self.label2title = {}
-        self.label2tag = {}
-        self.label2chapter = {}
-        self.flabel2tag = {}
-        self.root = root
+        self.label_to_number: Dict[str, str] = {}
+        self.label_to_title: Dict[str, str] = {}
+        self.label_to_tag: Dict[str, QqTag] = {}
+        self.label_to_chapter: Dict[str, int] = {}
+        self.flabel_to_tag: Dict[str, QqTag] = {}
+        self.root: QqTag = root
         self.counters = {}
-        self.chapters = []
-        self.heading2level = {'chapter':1,
-                             'section':2,
-                             'subsection':3,
-                             'subsubsection':4}
+        self.chapters: List[Chapter] = []
+        self.heading_to_level = {'chapter': 1,
+                                 'section': 2,
+                                 'subsection': 3,
+                                 'subsubsection': 4}
 
         self.mode = 'wholedoc'
         #: how to render the doc? the following options are available:
@@ -153,7 +240,6 @@ class QqHTMLFormatter(object):
         self.counters['subsubsection'] = (self.counters['subsection'].
                                           spawn_child())
 
-
         self.counters['equation'] = spawn_or_create_counter(
             chapters_counter)
         self.counters['equation'].showparents = True
@@ -168,8 +254,8 @@ class QqHTMLFormatter(object):
                                                 'proposition', 'lemma',
                                                 'question', 'corollary']}
 
-        self.metatags = {'meta', 'author', 'affiliation', 'project',
-                         'license', 'title', 'url', 'lang'}
+        self.metatags = {'meta', 'author', 'affiliation', 'link',
+                         'license', 'title', 'url', 'lang', 'role'}
 
         # You can make self.localnames = {} to use
         # plain English localization
@@ -192,7 +278,7 @@ class QqHTMLFormatter(object):
             }
         }
 
-        self.localnames = None
+        self.localnames: Dict[str, str] = None
 
         self.formulaenvs = {'eq', 'equation', 'align'}
 
@@ -207,26 +293,24 @@ class QqHTMLFormatter(object):
         plt.rcParams['figure.figsize'] = (6, 4)
 
         self.pythonfigure_globals = {'plt': plt}
-        self.code_prefixes = {'pythonfigure':
-                                  'import matplotlib.pyplot as plt\n',
-                              'plotly':
-                                  ("import plotly\n"
-                                   "import plotly.graph_objs as go\n"
-                                   "from plotly.offline import iplot "
-                                   "as plot\n"
-                                   "from plotly.offline import "
-                                   "init_notebook_mode\n\n"
-                                   "init_notebook_mode()\n\n"),
-                              'rawhtml': ''}
+        self.code_prefixes = dict(
+            pythonfigure='import matplotlib.pyplot as plt\n',
+            plotly=("import plotly\n"
+                    "import plotly.graph_objs as go\n"
+                    "from plotly.offline import iplot "
+                    "as plot\n"
+                    "from plotly.offline import "
+                    "init_notebook_mode\n\n"
+                    "init_notebook_mode()\n\n"), rawhtml='')
 
         self.plotly_plotter = PlotlyPlotter()
 
-        self.plotly_globals = {}
+        self.plotly_globals: Dict[str, Any] = {}
 
-        self.css = {}
-        self.js_top = {}
-        self.js_bottom = {}
-        self.js_onload = {}
+        self.css: Dict[str, str] = {}
+        self.js_top: Dict[str, str] = {}
+        self.js_bottom: Dict[str, str] = {}
+        self.js_onload: Dict[str, str] = {}
 
         self.safe_tags = (set(self.enumerateable_envs) |
                           set(self.formulaenvs) |
@@ -238,7 +322,7 @@ class QqHTMLFormatter(object):
                            'hidden', 'backref', 'label', 'em',
                            'emph', 'quiz', 'choice', 'correct',
                            'comment'} |
-                          set(self.heading2level) |
+                          set(self.heading_to_level) |
                           self.metatags)
 
     def url_for_figure(self, s: str):
@@ -249,10 +333,9 @@ class QqHTMLFormatter(object):
         """
         return "/fig/" + s
 
-    def make_python_fig(self, code: str, exts=('pdf', 'svg'),
-                        tight_layout=True):
-        if isinstance(exts, str):
-            exts = (exts, )
+    def make_python_fig(self, code: str,
+                        exts: Tuple[str, ...]=('pdf', 'svg'),
+                        tight_layout=True) -> str:
         hashsum = hashlib.md5(code.encode('utf8')).hexdigest()
         prefix = hashsum[:2]
         path = os.path.join(self.figures_dir, prefix, hashsum)
@@ -265,7 +348,6 @@ class QqHTMLFormatter(object):
 
         if needfigure:
             make_sure_path_exists(path)
-            loc = {}
             gl = self.pythonfigure_globals
             plt.close()
             exec(code, gl)
@@ -280,7 +362,7 @@ class QqHTMLFormatter(object):
         global plotly
         if plotly is None:
             import plotly
-        loc = {}
+        loc: Dict[str, Any] = {}
         self.plotly_globals.update({'plot': self.plotly_plotter.plot,
                                     'go': plotly.graph_objs,
                                     'plotly': plotly})
@@ -294,8 +376,8 @@ class QqHTMLFormatter(object):
     def uses_tags(self) -> set:
         members = inspect.getmembers(self, predicate=inspect.ismethod)
         handles = [member for member in members
-                   if member[0].startswith("handle_") or
-                      member[0] == 'make_numbers']
+                   if (member[0].startswith("handle_") or
+                       member[0] == 'make_numbers')]
         alltags = set([])
         for handle in handles:
             if handle[0].startswith("handle_"):
@@ -323,7 +405,7 @@ class QqHTMLFormatter(object):
     def handle(self, tag: QqTag) -> str:
         name = tag.name
         default_handler = 'handle_'+name
-        if name in self.heading2level:
+        if name in self.heading_to_level:
             return self.handle_heading(tag)
         elif name in self.enumerateable_envs:
             return self.handle_enumerateable(tag)
@@ -332,13 +414,15 @@ class QqHTMLFormatter(object):
         else:
             return ""
 
-    def blanks_to_pars(self, s: str, keep_end_pars=True) -> str:
+    @staticmethod
+    def blanks_to_pars(s: str, keep_end_pars=True) -> str:
         if not keep_end_pars:
             s = s.rstrip()
 
         return re.sub(r"\n\s*\n", "\n</p>\n<p>\n", s)
 
-    def label2id(self, label: str) -> str:
+    @staticmethod
+    def label2id(label: str) -> str:
         return "label_" + mk_safe_css_ident(label.strip())
 
     def format(self, content: Optional[QqTag],
@@ -358,10 +442,10 @@ class QqHTMLFormatter(object):
         for child in content:
             if isinstance(child, str):
                 if blanks_to_pars:
-                    out.append(self.blanks_to_pars(html.escape(
+                    out.append(self.blanks_to_pars(html_escape(
                         child, keep_end_pars)))
                 else:
-                    out.append(html.escape(child))
+                    out.append(html_escape(child))
             else:
                 out.append(self.handle(child))
         return "".join(out)
@@ -373,18 +457,18 @@ class QqHTMLFormatter(object):
 
         Example:
 
-            \chapter This is first header
+            \chapter This is first heading
 
-            \section This is the second header \label{sec:second}
+            \section This is the second heading \label{sec:second}
 
         :param tag:
         :return:
         """
         tag_to_hx = {
-            'chapter':'h1',
-            'section':'h2',
-            'subsection':'h3',
-            'subsubsection':'h4'
+            'chapter': 'h1',
+            'section': 'h2',
+            'subsection': 'h3',
+            'subsubsection': 'h4'
         }
 
         doc, html, text = Doc().tagtext()
@@ -400,7 +484,6 @@ class QqHTMLFormatter(object):
         if tag.next() and isinstance(tag.next(), str):
             ret += "<p>"
         return doc.getvalue()
-
 
     def handle_eq(self, tag: QqTag) -> str:
         """
@@ -513,7 +596,7 @@ ${formatter.format(item, blanks_to_pars=False)}
         doc, html, text = Doc().tagtext()
         if len(tag) == 1:
             tag = tag.unitemized()
-            
+
         if tag.is_simple:
             prefix = None
             label = tag.value
@@ -524,8 +607,8 @@ ${formatter.format(item, blanks_to_pars=False)}
 
             prefix, label = tag.children_values(not_simple='keep')
 
-        number = self.label2number.get(label, "???")
-        target = self.label2tag[label]
+        number = self.label_to_number.get(label, "???")
+        target = self.label_to_tag[label]
         href = ""
         if self.mode == 'bychapters':
             if 'snippet' not in [t.name for t in tag.ancestor_path()]:
@@ -547,11 +630,15 @@ ${formatter.format(item, blanks_to_pars=False)}
 
         with html("span", klass="ref"):
             with html("a", klass="a-ref", href=href,
-                      title=self.label2title.get(label, "")):
+                      title=self.label_to_title.get(label, "")):
                 if prefix:
                     doc.asis(self.format(prefix, blanks_to_pars=False))
-                if eqref and hasattr(self, 'url_for_eq_snippet'):
-                    doc.attr(('data-url', self.url_for_eq_snippet(number)))
+                if eqref:
+                    try:
+                        doc.attr(
+                            ('data-url', self.url_for_eq_snippet(number)))
+                    except NotImplementedError:
+                        pass
                 if (not isinstance(prefix, QqTag) or
                         not prefix.exists("nonumber")):
                     if prefix:
@@ -598,8 +685,8 @@ ${formatter.format(item, blanks_to_pars=False)}
         else:
             if len(tag) != 2:
                 raise Exception("Incorrect number of arguments in "
-                              + str(tag) + ": one or two arguments "
-                                           "expected")
+                              + str(tag) + (": one or two arguments "
+                                            "expected"))
             title, label = tag.children_values(not_simple='keep')
             # TODO: testme
 
@@ -636,6 +723,16 @@ ${formatter.format(item, blanks_to_pars=False)}
         """
         return "/snippet/"+label
 
+    def url_for_eq_snippet(self, label: str) -> Optional[str]:
+        """
+        Returns url for equation snippet by label
+        Should be implemented in subclass
+
+        :param label:
+        :return:
+        """
+        raise NotImplementedError
+
     def handle_eqref(self, tag: QqTag) -> str:
         """
         Alias to handle_ref
@@ -671,7 +768,7 @@ ${formatter.format(item, blanks_to_pars=False)}
                 else:
                     text(join_nonempty(env_localname, number) + ".")
 
-            doc.asis(" " + self.format(tag, blanks_to_pars= True))
+            doc.asis(" " + self.format(tag, blanks_to_pars=True))
         return "<p>"+doc.getvalue()+"</p>\n<p>"
 
     def handle_proof(self, tag: QqTag) -> str:
@@ -717,9 +814,9 @@ ${formatter.format(item, blanks_to_pars=False)}
             doc.asis(self.format(tag, blanks_to_pars=False).strip() + ".")
         return "<p>" + doc.getvalue()+" "
 
-    def handle_list(self, tag: QqTag, type: str) -> str:
+    def handle_list(self, tag: QqTag, type_: str) -> str:
         doc, html, text = Doc().tagtext()
-        with html(type):
+        with html(type_):
             for item in tag("item"):
                 with html("li"):
                     doc.asis(self.format(item))
@@ -770,29 +867,28 @@ ${formatter.format(item, blanks_to_pars=False)}
                 label = tag.label_.value
             else:
                 label = None
-            for child in tag:
-                if isinstance(child, QqTag):
-                    if child.name in subtags:
-                        if tag.exists("showcode"):
-                            doc.asis(self.showcode(
-                                child, collapsed=tag.exists("collapsed"),
-                                lang = langs.get(child.name)))
-                        doc.asis(self.handle(child))
-                    elif child.name == 'caption':
-                        with html("div", klass="figure_caption"):
-                            if label is not None:
-                                with html("a",
-                                          klass="figure_caption_anchor",
-                                          href="#" + self.label2id(label)):
-                                    text(join_nonempty(
-                                        self.localize("Fig."),
-                                        tag.get("number")))
-                                text(": ")
-                            else:
-                                text(join_nonempty(self.localize("Fig."),
-                                                   tag.get("number"))+": ")
-                            doc.asis(self.format(child,
-                                                 blanks_to_pars=True))
+            for child in tag.children_tags():
+                if child.name in subtags:
+                    if tag.exists("showcode"):
+                        doc.asis(self.showcode(
+                            child, collapsed=tag.exists("collapsed"),
+                            lang=langs.get(child.name)))
+                    doc.asis(self.handle(child))
+                elif child.name == 'caption':
+                    with html("div", klass="figure_caption"):
+                        if label is not None:
+                            with html("a",
+                                      klass="figure_caption_anchor",
+                                      href="#" + self.label2id(label)):
+                                text(join_nonempty(
+                                    self.localize("Fig."),
+                                    tag.get("number")))
+                            text(": ")
+                        else:
+                            text(join_nonempty(self.localize("Fig."),
+                                               tag.get("number"))+": ")
+                        doc.asis(self.format(child,
+                                             blanks_to_pars=True))
         return doc.getvalue()
 
     def handle_pythonfigure(self, tag: QqTag) -> str:
@@ -803,7 +899,7 @@ ${formatter.format(item, blanks_to_pars=False)}
         :return:
         """
 
-        path = self.make_python_fig(tag.text_content, exts=("svg"))
+        path = self.make_python_fig(tag.text_content, exts=("svg",))
         doc, html, text = Doc().tagtext()
         with html("img", klass="figure img-responsive",
                   src=self.url_for_figure(
@@ -815,13 +911,15 @@ ${formatter.format(item, blanks_to_pars=False)}
     def handle_plotly(self, tag: QqTag) -> str:
         return "".join(self.make_plotly_fig(tag.text_content))
 
-    def showcode(self, tag: QqTag, collapsed=False, lang=None) -> str:
+    def showcode(self, tag: QqTag, collapsed=False, lang: str=None) -> str:
         """
         <button class="source toggle btn btn-xs btn-primary">
 <span class="glyphicon glyphicon-chevron-up"></span>
 </button>
 
         :param tag:
+        :param collapsed: show code in collapsed mode by default
+        :param lang: language to use
         :return:
         """
 
@@ -886,7 +984,6 @@ ${formatter.format(item, blanks_to_pars=False)}
         return ("<div style='text-align: left'>" +
                 button + doc.getvalue() + "</div>")
 
-
     def handle_snippet(self, tag: QqTag) -> str:
         """
         Uses tags: hidden, backref, label
@@ -905,7 +1002,7 @@ ${formatter.format(item, blanks_to_pars=False)}
     def handle_hide(self, tag: QqTag) -> str:
         """
         :param tag:
-        :return:
+        :return: str
         """
         return ""
 
@@ -951,45 +1048,40 @@ ${formatter.format(item, blanks_to_pars=False)}
 
         :return:
         """
-        for tag in root:
-            if isinstance(tag, QqTag):
-                name = tag.name
-                if ((name in self.counters or
-                            name in self.enumerateable_envs) and
-                        not (tag.find('number') or
-                                 tag.exists('nonumber'))):
-                    counter = self.get_counter_for_tag(tag)
-                    if counter is not None:
-                        counter.increase()
-                        tag.append_child(QqTag({'number': str(counter)}))
-                        if tag.find('label'):
-                            label = tag.label_.value
-                            self.label2number[label] = str(counter)
-                            # self.label2title[label] = tag.text_content
-                if tag.find('label') and tag.find('number'):
-                    self.label2number[tag.label_.value] = tag.number_.value
-                if tag.find('label'):
-                    self.label2tag[tag.label_.value] = tag
-                if tag.find('flabel'):
-                    self.flabel2tag[tag.flabel_.value.lower()] = tag
-                self.make_numbers(tag)
+        for tag in root.children_tags():
+            name = tag.name
+            if ((name in self.counters or
+                 name in self.enumerateable_envs)
+                and not (tag.find('number') or
+                         tag.exists('nonumber'))):
+                counter = self.get_counter_for_tag(tag)
+                if counter is not None:
+                    counter.increase()
+                    tag.append_child(QqTag({'number': str(counter)}))
+                    if tag.find('label'):
+                        label = tag.label_.value
+                        self.label_to_number[label] = str(counter)
+                        # self.label_to_title[label] = tag.text_content
+            if tag.find('label') and tag.find('number'):
+                self.label_to_number[tag.label_.value] = tag.number_.value
+            if tag.find('label'):
+                self.label_to_tag[tag.label_.value] = tag
+            if tag.find('flabel'):
+                self.flabel_to_tag[tag.flabel_.value.lower()] = tag
+            self.make_numbers(tag)
 
-    def find_tag_by_flabel(self, s: str) -> str:
-        flabel = process.extractOne(s.lower(), self.flabel2tag.keys())[0]
-        return self.flabel2tag.get(flabel)
+    def find_tag_by_flabel(self, s: str) -> QqTag:
+        flabel = process.extractOne(
+            s.lower(), self.flabel_to_tag.keys())[0]
+        return self.flabel_to_tag.get(flabel)
 
     def mk_chapters(self):
-        assert self.root is not None, ("Trying to make chapters "
-                                       "of empty document")
-        curchapter = Chapter(QqTag("_zero_chapter"),  [])
-        self.chapters = []
-
-        for tag in self.root:
-            if isinstance(tag, QqTag) and tag.name == 'chapter':
-                self.add_chapter(curchapter)
-                curchapter = Chapter(tag, [])
-            curchapter.content.append(tag)
-        self.add_chapter(curchapter)
+        for heading, *contents in split_by_predicate(
+                self.root,
+                predicate=lambda tag: (isinstance(tag, QqTag) and
+                                       tag.name == "chapter"),
+                zero_delim=QqTag("_zero_chapter")):
+            self.add_chapter(Chapter(heading, [heading] + contents))
 
     def tag2chapter(self, tag) -> int:
         """
@@ -1004,12 +1096,11 @@ ${formatter.format(item, blanks_to_pars=False)}
         """
 
         eve = tag.get_eve()
-        headers = self.root("chapter")
-        i = 0
-        for i, header in enumerate(headers, 1):
-            if eve.index < header.index:
-                return i - 1
-        return i
+        chapters = self.root("chapter")
+
+        return next((i - 1 for i, chapter in enumerate(chapters, 1)
+                     if eve.idx < chapter.idx),
+                    len(chapters))
 
     def url_for_chapter(self, index=None, label=None,
                         fromindex=None) -> str:
@@ -1026,12 +1117,12 @@ ${formatter.format(item, blanks_to_pars=False)}
         """
         assert index is not None or label is not None
         if index is None:
-            index = self.label2chapter[label]
+            index = self.label_to_chapter[label]
         if fromindex is not None and fromindex == index:
             # we are already on the right page
             return ""
         if label is None:
-            label = self.chapters[index].header.find("label")
+            label = self.chapters[index].heading.find("label")
         if not label:
             return self.url_for_chapter_by_index(index)
         return self.url_for_chapter_by_label(label.value)
@@ -1043,8 +1134,8 @@ ${formatter.format(item, blanks_to_pars=False)}
         return "/chapter/label/" + urllib.parse.quote(label)
 
     def add_chapter(self, chapter: Chapter) -> None:
-        if chapter.header.find("label"):
-            self.label2chapter[chapter.header.label_.value] = len(
+        if chapter.heading.find("label"):
+            self.label_to_chapter[chapter.heading.label_.value] = len(
                 self.chapters)
         self.chapters.append(chapter)
 
@@ -1085,47 +1176,161 @@ ${formatter.format(item, blanks_to_pars=False)}
         curchapter = 0
         # chapter before first `chapter` has index 0
 
-        assert self.root is not None
-
         with html("ul", klass="nav"):
-            for child in self.root:
+            for child in self.root.children_tags():
                 chunk = []
-                if isinstance(child, QqTag):
-                    m = re.match(r'h(\d)', child.name)
-                    if child.name in self.heading2level:
-                        hlevel = self.heading2level[child.name]
+                if child.name in self.heading_to_level:
+                    hlevel = self.heading_to_level[child.name]
 
-                        # `chapter` header marks new chapter, so increase
-                        # curchapter counter
-                        if hlevel == 1:
-                            curchapter += 1
+                    # `chapter` heading marks new chapter, so increase
+                    # curchapter counter
+                    if hlevel == 1:
+                        curchapter += 1
 
-                        if hlevel > maxlevel:
-                            continue
-                        while hlevel > curlevel:
-                            chunk.append("<li><ul class='nav'>\n")
-                            curlevel += 1
-                        while hlevel < curlevel:
-                            chunk.append("</ul></li>\n")
-                            curlevel -= 1
+                    if hlevel > maxlevel:
+                        continue
+                    while hlevel > curlevel:
+                        chunk.append("<li><ul class='nav'>\n")
+                        curlevel += 1
+                    while hlevel < curlevel:
+                        chunk.append("</ul></li>\n")
+                        curlevel -= 1
 
-                        targetpage = self.url_for_chapter(
-                            index=curchapter, fromindex=chapter)
+                    targetpage = self.url_for_chapter(
+                        index=curchapter, fromindex=chapter)
 
-                        item_doc, item_html, item_text = Doc().tagtext()
-                        with item_html(
-                                "li",
-                                klass = ("toc_item toc_item_level_%i" %
-                                             curlevel)):
-                            with item_html("a", href=(targetpage + "#" +
-                                                      self.tag_id(child))):
-                                item_text(self.format(
-                                    child, blanks_to_pars=False))
-                        chunk.append(item_doc.getvalue())
-                        doc.asis("".join(chunk))
+                    item_doc, item_html, item_text = Doc().tagtext()
+                    with item_html(
+                            "li",
+                            klass=("toc_item toc_item_level_%i" %
+                                   curlevel)):
+                        with item_html("a", href=(targetpage + "#" +
+                                                  self.tag_id(child))):
+                            item_text(self.format(
+                                child, blanks_to_pars=False))
+                    chunk.append(item_doc.getvalue())
+                    doc.asis("".join(chunk))
         return doc.getvalue()
 
-    def tag_hash_id(self, tag: QqTag) -> str:
+    def extract_toc(self, maxlevel=2) -> TOCItem:
+        """
+        \chapter Hello
+        \section World
+        \section This
+        \subsection Haha
+        \section Hoho
+        \chapter Another
+        \section Dada
+
+        --->
+        TOCItem(None,
+        [
+            TOCItem(None, []),
+            TOCItem("chap:Hello", [
+                TOCItem("sec:World", []),
+                TOCItem("sec:This", [
+                    TOCItem("ssec:Haha", [])
+                ],
+                TOCItem("sec:Hoho", [])
+            ],
+            TOCItem("chap:Another",[
+                TOCItem("sec:Dada", [])
+            ])
+        ])
+
+        \section This
+        \chapter Hello
+        \subsection Haha
+        \section Hoho
+
+        TOCItem(None,
+        [
+            TOCItem(None, [
+                TOCItem("sec:This")
+            ]),
+            TOCItem("chap:Hello"), [
+                TOCItem(None, [
+                    TOCItem("ssec:Haha", [])
+                ]),
+                TOCItem("Hoho", [])
+            ]
+        ])
+
+        :param maxlevel: maximal level of headings to include
+                         (headings numeration starts with 1)
+        :return:
+        """
+
+        toc = TOCItem(None)
+        curitem = toc.spawn_child(None)
+
+        curlevel = 1
+
+        # loop invariant:
+        # 1. all heading processed so far are added to toc
+        # 2. curlevel == level of the last processed heading
+        # 3. curitem is a TOCItem for the last processed heading
+        # 4. depth of curitem == curlevel (depth of root is 0)
+
+        for tag in self.root.children_tags():
+            if tag.name in self.heading_to_level:
+                hlevel = self.heading_to_level[tag.name]
+
+                if hlevel > maxlevel:
+                    continue
+
+                # want to make curlevel == hlevel - 1
+                # by going up and down on the tree
+
+                # if curlevel < hlevel - 1: add fake levels
+                for curlevel in range(curlevel + 1, hlevel):
+                    curitem = curitem.spawn_child(None)
+
+                # if curlevel >= hlevel, go to parent TOCItem
+                # (curlevel - hlevel + 1) times
+                for curlevel in range(curlevel - 1, hlevel - 2, -1):
+                    curitem = curitem.parent
+
+                assert curlevel == hlevel - 1
+
+                curitem = curitem.spawn_child(tag)
+                curlevel = hlevel
+        return toc
+
+    def format_toc(self, toc: TOCItem, fromchapter: int=None,
+                   tochapter: int=None) -> FormattedTOCItem:
+        """
+        Formats toc obtained with extract_toc()
+
+        :param toc:
+        :param fromchapter: current chapter, if None,
+                assuming all chapters are on one page
+                and only local links presented
+        :param tochapter: chapter we render now,
+                          None if we render contents
+                          for the whole book
+        :return:
+        """
+
+        ftoc = FormattedTOCItem()
+        if toc.tag:
+            ftoc.string = self.format(toc.tag, blanks_to_pars=False)
+            targetpage = self.url_for_chapter(index=tochapter,
+                                              fromindex=fromchapter)
+            ftoc.href = targetpage + "#" + self.tag_id(toc.tag)
+            ftoc.tag = toc.tag
+            ftoc.iscurchapter = toc.level == 1 and fromchapter == tochapter
+
+        for i, heading in enumerate(toc.children):
+            if toc.level == 0:
+                tochapter = i
+
+            ftoc.append_child(self.format_toc(
+                heading, fromchapter=fromchapter, tochapter=tochapter))
+        return ftoc
+
+    @staticmethod
+    def tag_hash_id(tag: QqTag) -> str:
         """
         Returns autogenerated tag id based on tag's contents.
         It's first 5 characters of MD5-hashsum of tag's content
@@ -1173,13 +1378,16 @@ ${formatter.format(item, blanks_to_pars=False)}
 
     def handle_affiliation(self, tag: QqTag) -> str:
         doc, html, text = Doc().tagtext()
-        with html("span", klass="meta meta-author meta-author-affiliation"):
+        with html("span",
+                  klass="meta meta-author meta-author-affiliation"):
             doc.asis(" (" + self.format(tag, blanks_to_pars=False) + ")")
         return doc.getvalue()
 
-    def handle_project(self, tag: QqTag) -> str:
+    def handle_link(self, tag: QqTag) -> str:
         doc, html, text = Doc().tagtext()
-        with html("p", klass="meta meta-project"):
+        with html("p", klass="meta meta-link"):
+            if tag.exists("role"):
+                doc.add_class("meta-link-" + tag.role_.value)
             if tag.exists("url"):
                 with html("a", href=tag.url_.value):
                     doc.asis(self.format(tag, blanks_to_pars=False))

@@ -79,54 +79,6 @@ def send_fig(path):
 def send_asset(path):
     return send_from_directory(os.path.join(scriptdir, 'assets'), path)
 
-@app.route("/preview/<filename>")
-def show_html(filename):
-    path = filename
-    if not os.path.isfile(app.config['FILE']):
-        abort(404)
-    with open(path) as f:
-        lines = f.readlines()
-    parser = QqParser()
-
-    formatter = QqFlaskHTMLFormatter()
-
-    parser.allowed_tags.update(formatter.uses_tags())
-    parser.allowed_tags.add('idx') # for indexes
-    tree = parser.parse(lines)
-    formatter.root = tree
-    formatter.pythonfigure_globals.update({'ob': odebook, 'np': numpy})
-    formatter.code_prefixes['pythonfigure'] += ("import numpy as np\n"
-                                                "import qqmbr.odebook as ob\n"
-                                                "# see https://github.com/ischurov/qqmbr/blob/master/qqmbr/odebook.py"
-                                                "\n\n")
-
-    formatter.plotly_globals.update({'np': numpy})
-    formatter.code_prefixes['plotly'] = formatter.code_prefixes.get('plotly',"") + "import numpy as np\n\n"
-
-    formatter.counters['h1'].value = 2
-    html = formatter.do_format()
-    return render_template("preview.html", html=html,
-                           title=tree._h1.text_content,
-                           toc=formatter.mk_toc(),
-                           rootdir=app.config.get('ROOTDIR'))
-
-# @app.route("/simple-preview/<filename>")
-# def simple_show_html(filename):
-#     path = os.path.join("samplefiles",filename)
-#     if not os.path.isfile(path):
-#         abort(404)
-#     with open(path) as f:
-#         lines = f.readlines()
-#     parser = QqParser()
-#     formatter = QqFlaskHTMLFormatter()
-#     parser.allowed_tags.update(formatter.uses_tags())
-#     parser.allowed_tags.add('idx') # for indexes
-#     tree = parser.parse(lines)
-#     formatter.root = tree
-#     formatter.counters['h1'].value = 2
-#     html = formatter.do_format()
-#     return render_template("preview.html", html=html, title=tree._h1.text_content)
-
 @app.route("/eq/<number>/")
 def show_eq(number):
     if allthebook is None:
@@ -187,20 +139,22 @@ def prepare_book():
 
 def show_chapter(index=None, label=None):
     print("Processing chapter index = {}, label = {}".format(index, label))
-    if index is None and label is None:
-        abort(404)
 
     tree, formatter = prepare_book()
 
+    if index is None and label is None:
+        index = min(1, len(formatter.chapters) - 1)
+
     if index is None:
-        index = formatter.label2chapter[label]
+        index = formatter.label_to_chapter[label]
     #for x in formatter.chapters[index].content:
     #    if isinstance(x, QqTag):
     #        print(x.as_list())
     #    else:
     #        print(x)
 
-    html = formatter.format(formatter.chapters[index].content, blanks_to_pars=True)
+    html = formatter.format(formatter.chapters[index].content,
+                            blanks_to_pars=True)
 
     if index == len(formatter.chapters) - 1:
         next = None
@@ -214,20 +168,34 @@ def show_chapter(index=None, label=None):
 
     style, body = mathjax_if_needed(html)
 
-    style += "\n".join(itertools.chain(formatter.css.values(), formatter.js_top.values()))
+    style += "\n".join(itertools.chain(formatter.css.values(),
+                                       formatter.js_top.values()))
 
     html = style + app.config.get('css_correction', '') + body
 
+    ftoc = formatter.format_toc(formatter.extract_toc(maxlevel=1),
+                                fromchapter=index)
 
+    curftoc = formatter.format_toc(formatter.extract_toc(
+        maxlevel=3).children[index], fromchapter=index, tochapter=index)
 
-    return render_template("preview.html", html=html,
-                           title=formatter.chapters[index].header.text_content,
-                           toc=formatter.mk_toc(chapter=index, maxlevel=1), preamble="",
-                           next=next, prev=prev, js_bottom = "\n".join(formatter.js_bottom.values()),
-                           js_onload = "\n".join(formatter.js_onload.values()))
+    chapter_heading = formatter.chapters[index].heading
+    # print(formatter.chapters[index].content)
+    return render_template("preview.html",
+                           meta=tree.find("meta"),
+                           html=html,
+                           title=(chapter_heading.text_content),
+                           ftoc=ftoc,
+                           curftoc=curftoc,
+                           preamble="",
+                           next=next, prev=prev,
+                           js_bottom = "\n".join(
+                               formatter.js_bottom.values()),
+                           js_onload = "\n".join(
+                               formatter.js_onload.values()))
 
 @app.route("/chapter/index/<int:index>/")
-def show_chapter_by_index(index):
+def show_chapter_by_index(index=None):
     return show_chapter(index=index)
 
 @app.route("/chapter/label/<label>/")
@@ -237,26 +205,26 @@ def show_chapter_by_label(label):
 @app.route("/snippet/<label>/")
 def show_snippet(label):
     tree, formatter = prepare_book()
-    tag = formatter.label2tag.get(label)
+    tag = formatter.label_to_tag.get(label)
 
     if tag is None or tag.name != 'snippet':
         abort(404)
     if tag.exists("backref"):
-        backref = tag._backref.value
+        backref = tag.backref_.value
     else:
         backref = label
 
     parser = QqParser()
     parser.allowed_tags.update(formatter.uses_tags())
     backref_tag = parser.parse(r"\ref[Подробнее\nonumber][{}]".format(backref))
-    tag.append_child(backref_tag._ref)
+    tag.append_child(backref_tag.ref_)
 
     html = formatter.format(tag, blanks_to_pars=True)
 
     return mathjax_if_needed(html)[1]
 @app.route("/")
 def show_default():
-    return show_chapter_by_index(1)
+    return show_chapter_by_index()
 
 def mathjax_if_needed(s):
     preamble = app.config.get('preamble', '')

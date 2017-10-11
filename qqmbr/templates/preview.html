@@ -38,6 +38,38 @@ Available under BSD 3-Clause License, see https://github.com/hplgit/doconce/blob
         div.figure {
             padding-bottom: 20px;
         }
+
+        body {
+            position: relative;
+            padding-bottom: 50px;
+        }
+
+
+.affix-top {
+  position: relative;
+    width: 200px;
+}
+
+.affix {
+  top: 20px;
+}
+
+.affix,
+.affix-bottom {
+    width: 200px;
+}
+
+.affix-bottom {
+  position: absolute;
+}
+
+
+
+.scrollable-menu {
+    height: auto;
+    max-height: 80vh;
+    overflow-x: hidden;
+}
     </style>
 <!-- Bootstrap style: http://getbootstrap.com/getting-started/
 
@@ -61,6 +93,7 @@ Footer with author(s) and copyright (remove or edit)
 <!-- Potential adjustment of styles -->
 <style type="text/css">
 /* Colors in the navigation sidebar */
+/*
 .bs-docs-sidebar .nav > li > a {
   color: #999;
 }
@@ -73,6 +106,7 @@ Footer with author(s) and copyright (remove or edit)
 .bs-docs-sidebar .nav > .active:focus > a {
   color: #563d7c;
 }
+*/
 
 a.snippet-ref {
     color: inherit;
@@ -113,7 +147,6 @@ div.quiz {
     }
     */
     span.end-of-proof {
-
       float: right;
     }
 
@@ -139,18 +172,172 @@ div.quiz {
         margin: auto;
     }
 
-    .affix {
-        position: relative;
+    .dropdown-menu > li > a {
+        color: #337ab7;
     }
+
+    .dropdown-menu > li > a.nav-curchapter {
+        color: inherit;
+    }
+
+
+/* By default it's not affixed in mobile views, so undo that */
+.bs-docs-sidebar.affix {
+  position: static;
+}
+@media (min-width: 768px) {
+  .bs-docs-sidebar {
+    padding-left: 20px;
+  }
+}
+
+/* Chapter heading in sidenav */
+.bs-docs-sidebar .sidebar-chapter-heading {
+    padding-bottom: 0px;
+    margin-bottom: 0px;
+   /* border-bottom: 1px solid #555 ; */
+}
+/* First level of nav */
+.bs-docs-sidenav {
+  margin-top: 15px;
+  margin-bottom: 20px;
+}
+
+/* All levels of nav */
+.bs-docs-sidebar .sidebar-chapter-heading a {
+    font-size: 13px;
+  font-weight: bold;
+  color: #767676;
+}
+
+.bs-docs-sidebar .sidebar-chapter-heading a:hover,
+.bs-docs-sidebar .sidebar-chapter-heading a:focus
+{
+    color: #1f77b4;
+  text-decoration: none;
+  background-color: transparent;
+}
+
+.bs-docs-sidebar .nav > li > a {
+  display: block;
+  padding: 4px 20px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #767676;
+}
+.bs-docs-sidebar .nav > li > a:hover,
+.bs-docs-sidebar .nav > li > a:focus {
+  padding-left: 18px;
+  color: #1f77b4;
+  text-decoration: none;
+  background-color: transparent;
+  border-left: 2px solid #1f77b4;
+}
+.bs-docs-sidebar .nav > .active > a,
+.bs-docs-sidebar .nav > .active:hover > a,
+.bs-docs-sidebar .nav > .active:focus > a {
+  padding-left: 18px;
+  font-weight: bold;
+  color: #1f77b4;
+  background-color: transparent;
+  border-left: 2px solid #1f77b4;
+}
+
+/* Nav: second level (shown on .active) */
+.bs-docs-sidebar .nav .nav {
+  display: none; /* Hide by default, but at >768px, show it */
+  padding-bottom: 10px;
+}
+.bs-docs-sidebar .nav .nav > li > a {
+  padding-top: 3px;
+  padding-bottom: 3px;
+  padding-left: 30px;
+  font-size: 12px;
+  font-weight: normal;
+}
+.bs-docs-sidebar .nav .nav > li > a:hover,
+.bs-docs-sidebar .nav .nav > li > a:focus {
+  padding-left: 28px;
+}
+.bs-docs-sidebar .nav .nav > .active > a,
+.bs-docs-sidebar .nav .nav > .active:hover > a,
+.bs-docs-sidebar .nav .nav > .active:focus > a {
+  padding-left: 28px;
+  font-weight: 500;
+}
+
+/* Back to top (hidden on mobile) */
+.back-to-top,
+.bs-docs-theme-toggle {
+  display: none;
+  padding: 4px 10px;
+  margin-top: 10px;
+  margin-left: 10px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #999;
+}
+.back-to-top:hover,
+.bs-docs-theme-toggle:hover {
+  color: #1f77b4;
+  text-decoration: none;
+}
+.bs-docs-theme-toggle {
+  margin-top: 0;
+}
+
+@media (min-width: 768px) {
+  .back-to-top,
+  .bs-docs-theme-toggle {
+    display: block;
+  }
+}
+
+/* Show and affix the side nav when space allows it */
+@media (min-width: 992px) {
+  .bs-docs-sidebar .nav > .active > ul {
+    display: block;
+  }
+  /* Widen the fixed sidebar */
+  .bs-docs-sidebar.affix,
+  .bs-docs-sidebar.affix-bottom {
+    width: 213px;
+  }
+  .bs-docs-sidebar.affix {
+    position: fixed; /* Undo the static from mobile first approach */
+    top: 20px;
+  }
+  .bs-docs-sidebar.affix-bottom {
+    position: absolute; /* Undo the static from mobile first approach */
+  }
+  .bs-docs-sidebar.affix-bottom .bs-docs-sidenav,
+  .bs-docs-sidebar.affix .bs-docs-sidenav {
+    margin-top: 0;
+    margin-bottom: 0;
+  }
+}
+@media (min-width: 1200px) {
+  /* Widen the fixed sidebar again */
+  .bs-docs-sidebar.affix-bottom,
+  .bs-docs-sidebar.affix {
+    width: 263px;
+
+  }
+}
+
+
 </style>
 
 
 </head>
 
-<body>
+<body data-spy="scroll" data-target="#sidebar-wrapper">
+
+
+<!--
 <a class="sr-only sr-only-focusable" href="#content">К началу</a>
 
-<!-- Docs master nav -->
+<!-- Docs master nav --
 <header class="navbar navbar-static-top bs-docs-nav" id="top" role="banner">
 <div class="container">
   <div class="navbar-header">
@@ -160,7 +347,7 @@ div.quiz {
       <span class="icon-bar"></span>
       <span class="icon-bar"></span>
     </button>
- <!--   <a href="thebook.html" class="navbar-brand">%(title)s</a> -->
+ <!--   <a href="thebook.html" class="navbar-brand">%(title)s</a> --
   </div>
   <nav class="collapse navbar-collapse bs-navbar-collapse" role="navigation">
     <ul class="nav navbar-nav navbar-right">
@@ -171,7 +358,94 @@ div.quiz {
 </div>
 
 </header>
+-->
 
+{% macro render_ftoc(ftoc, numbers=True) %}
+      {% for item in ftoc.children recursive %}
+      <li>
+          {%- if item.string -%}
+
+            <a href="{{ item.href }}" {%- if item.iscurchapter -%} class="nav-curchapter"{%- endif %}>
+
+              {%- if numbers and item.tag.get("number") -%}{{ item.tag.get("number") }}. {% endif -%}{{ item.string }}
+            </a>
+
+          {%- endif -%}
+          {%- if item.children -%}
+               <ul class="nav">{{ loop(item.children) }}</ul>
+          {%- endif -%}
+      </li>
+      {% endfor %}
+{% endmacro %}
+<div class="jumbotron">
+    <div class="container">
+        <div class="page-header">
+          <h1>{{ meta.get("title") }}
+              {% if meta.subtitle_ %}
+                <small>{{ meta.get("subtitle") }}</small>
+              {% endif %}
+          </h1>
+          {% if meta.author_ %}
+            <p>{{ meta.author_.text_content }}
+            {% if meta.author_.affiliation_ %}
+                ({{ meta.author_.affiliation_.text_content }})
+            {% endif %}
+            </p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+<nav class="navbar navbar-default navbar-fixed-bottom">
+  <div class="container-fluid">
+    <!-- Brand and toggle get grouped for better mobile display -->
+    <div class="navbar-header">
+      <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#bs-example-navbar-collapse-1" aria-expanded="false">
+        <span class="sr-only">Toggle navigation</span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </button>
+    </div>
+
+    <!-- Collect the nav links, forms, and other content for toggling -->
+    <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
+            <ul class="nav navbar-nav">
+{% if prev is not none or next is not none %}
+        {% if prev is not none %}
+
+          <li>
+              <a href="{{ prev | safe }}">← Предыдущая глава</a>
+          </li>
+                {% endif %}
+<li class="dropdown">
+          <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">Содержание <span class="caret"></span></a>
+          <ul class="dropdown-menu scrollable-menu" role="menu">
+            {{ render_ftoc(ftoc) }}
+          </ul>
+      </li>
+
+{% endif %}
+      {% for link in meta("link") %}
+        <li>
+        <a href="{{ link.get("url") }}">{{ link.text_content }}</a>
+        </li>
+      {% endfor %}
+
+      </ul>
+
+      <ul class="nav navbar-nav navbar-right">
+
+{% if next is not none %}
+
+          <li class="next">
+              <a href="{{ next | safe }}">Следующая глава →</a>
+          </li>
+          {% endif %}
+
+      </ul>
+    </div><!-- /.navbar-collapse -->
+  </div><!-- /.container-fluid -->
+</nav>
 
 <!-- Docs page layout -->
 
@@ -185,7 +459,7 @@ the docs.min.css style, which makes orange math...
 </div>
 -->
 
-<div class="container bs-docs-container">
+<div class="container">
 
  <div class="row">
 
@@ -193,24 +467,26 @@ the docs.min.css style, which makes orange math...
   <div class="col-md-9" role="main">
       {{ preamble | safe }}
       {{ html | safe }}
-      {% if prev is not none or next is not none %}
-      <ul class="pager">
-          {% if prev is not none %}
-          <li class="previous">
-              <a href="{{ prev | safe }}">← Предыдущая глава</a>
-          </li>
-          {% endif %}
-          {% if next is not none %}
-          <li class="next">
-              <a href="{{ next | safe }}">Следующая глава →</a>
-          </li>
-          {% endif %}
-      </ul>
-      {% endif %}
+
 
   </div>
-
+     <div class="col-md-3 scrollspy" role="complementary" id="sidebar-wrapper">
+         <nav class="bs-docs-sidebar hidden-print hidden-sm hidden-xs">
+             <div  id="sidebar">
+                 <div class="sidebar-chapter-heading">
+                     <a href="{{ curftoc.href }}">
+                         {{ curftoc.string }}
+                     </a>
+                 </div>
+                 <ul class="nav bs-docs-sidenav" >
+                     {{ render_ftoc(curftoc, False) }}
+                 </ul>
+                 </div>
+         </nav>
+     </div>
+ </div>
   <!-- sidebar with navigation -->
+     <!--
   <div class="col-md-3">
    <div class="bs-docs-sidebar hidden-print hidden-xs hidden-sm" role="complementary">
     <ul class="nav bs-docs-sidenav">
@@ -220,19 +496,10 @@ the docs.min.css style, which makes orange math...
    </div>
   </div>
  </div>
-
- <div class="row Footer">
-  <div class="span12">
-   <div style="text-align: center;">
-  <!-- footer --> &copy; 2016 И. В. Щуров, НИУ ВШЭ. <a
-       href="https://github.com/ischurov/odebook/blob/master/README.md">Подробнее
-       об авторстве</a>. Учебник в процессе написания. Нашли ошибку? <a
-       href="https://gitreports.com/issue/ischurov/odebook">Сообщите!</a>
-   </div>
-  </div>
- </div>
+ -->
 </div>
 <!-- <script src='https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML'></script> -->
+
 <script src="{{ rootdir | default("") }}/assets/js/mathjax/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
     <script type="text/x-mathjax-config">
   MathJax.Hub.Config({
@@ -263,9 +530,17 @@ the docs.min.css style, which makes orange math...
 </script>
 
 <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/js/bootstrap.min.js" integrity="sha384-0mSbJDEHialfmuBBQP6A4Qrprq5OVfW37PRR3j5ELqxss1yVqOtnepnHVP9aJ7xS" crossorigin="anonymous"></script>
+
+<script>
+    $('#sidebar').affix({
+    offset: {
+        top: $('#sidebar').offset().top
+    }
+});
+</script>
 <!-- NOTE: replace rawgit.com by cdn.rawgit.com for production or
 sites with heavy traffic -->
-<script src="https://rawgit.com/hplgit/doconce/master/bundled/html_styles/style_bootstrap_wtoc/js/docs.min.js"></script>
+<!-- <script src="https://rawgit.com/hplgit/doconce/master/bundled/html_styles/style_bootstrap_wtoc/js/docs.min.js"></script> -->
 <!-- Include either the minifed or production version, NOT both!! -->
 <script type="text/javascript" src="https://cdn.jsdelivr.net/qtip2/2.2.1/jquery.qtip.min.js"></script>
 

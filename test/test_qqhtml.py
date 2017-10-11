@@ -12,6 +12,7 @@ import unittest
 from bs4 import BeautifulSoup
 import os
 import contextlib
+from textwrap import dedent
 
 
 # FROM: http://code.activestate.com/recipes/576620-changedirectory-context-manager/
@@ -145,11 +146,11 @@ Hello
 """
         tree = parser.parse(doc)
         html.root = tree
-        self.assertEqual(html.tag2chapter(tree._author), 0)
-        self.assertEqual(html.tag2chapter(tree._equation), 1)
-        self.assertEqual(html.tag2chapter(tree._equation._label), 1)
-        self.assertEqual(html.tag2chapter(tree._remark), 2)
-        self.assertEqual(html.tag2chapter(tree._remark._ref), 2)
+        self.assertEqual(html.tag2chapter(tree.author_), 0)
+        self.assertEqual(html.tag2chapter(tree.equation_), 1)
+        self.assertEqual(html.tag2chapter(tree.equation_.label_), 1)
+        self.assertEqual(html.tag2chapter(tree.remark_), 2)
+        self.assertEqual(html.tag2chapter(tree.remark_.ref_), 2)
 
     def test_ref_with_separator(self):
         doc = r"""\chapter Hello \label sec:first
@@ -184,10 +185,47 @@ See
         soup = BeautifulSoup(html, "html.parser")
         self.assertEqual(soup("a")[2].contents[0], "section 1")
 
+    def test_extract_toc(self):
+        doc = dedent(r"""
+        \section haha
+        \chapter Chap-One
+        Hello
+        \section Sec-One
+        World
+        \section Sec-Two
+        This
+        \subsection SubSec-One
+        Lala
+        \subsection SubSec-Two
+        Qqq
+        \section Sec-Three
+        Dada
+        \chapter Chap-Two
+        \subsection Strange
+        \section Last
+        """)
+        parser = QqParser()
+        formatter = QqHTMLFormatter()
+        parser.allowed_tags.update(formatter.uses_tags())
+        tree = parser.parse(doc)
+        formatter.root = tree
 
-
-
-
-
-
+        toc = formatter.extract_toc(maxlevel=3)
+        self.assertEqual(toc.as_tuple(),
+                         (None,
+                          [
+                              (None, [('section', [])]),
+                              ('chapter', [
+                                  ('section', []),
+                                  ('section', [
+                                      ('subsection', []),
+                                      ('subsection', [])
+                                  ]),
+                                  ('section', [])
+                              ]),
+                              ('chapter', [
+                                  (None, [('subsection', [])]),
+                                  ('section', [])
+                              ])
+                          ]))
 
