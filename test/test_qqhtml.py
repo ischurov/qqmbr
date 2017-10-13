@@ -229,3 +229,21 @@ See
                               ])
                           ]))
 
+    def test_missing_label(self):
+        doc = r"""\chapter Hello \label sec:first
+
+\chapter World \label sec:other
+
+See
+\ref[section][sec:third] and \ref[zection][sec:another] for details.
+"""
+        parser = QqParser()
+        formatter = QqHTMLFormatter()
+        parser.allowed_tags.update(formatter.uses_tags())
+        tree = parser.parse(doc)
+        formatter.root = tree
+        print(tree.as_list())
+        html = formatter.do_format()
+        soup = BeautifulSoup(html, "html.parser")
+        self.assertEqual(soup("a")[2].contents[0], "section ???")
+        self.assertEqual(soup("a")[3].contents[0], "zection ???")

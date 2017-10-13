@@ -10,7 +10,7 @@ from flask import (Flask, render_template, abort, send_from_directory,
                    url_for, g)
 from subprocess import Popen, PIPE, STDOUT
 from bs4 import BeautifulSoup
-import hashlib
+import shutil
 import itertools
 import argparse
 from flask_frozen import Freezer
@@ -43,16 +43,19 @@ font-size: 120%;
 }
 </style>
 """
-app.config['MATHJAX_ALLTHEBOOK'] = False
+app.config['MATHJAX_WHOLEBOOK'] = False
 
 app.debug = True
-allthebook = None
+wholebook = None
+tree = None
+formatter = None
+
 app.config['FILE'] = None
 
 class QqFlaskHTMLFormatter(QqHTMLFormatter):
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         self.figures_dir = os.path.join(curdir, "fig")
 
     def url_for_chapter_by_index(self, index):
@@ -67,8 +70,8 @@ class QqFlaskHTMLFormatter(QqHTMLFormatter):
     def url_for_figure(self, s):
         return url_for('send_fig', path=s)
 
-    def url_for_eq_snippet(self, number):
-        return url_for('show_eq', number=number)
+    def url_for_eq_snippet(self, eq_id):
+        return url_for('show_eq', eq_id=eq_id)
 
 
 @app.route('/fig/<path:path>')
@@ -79,34 +82,58 @@ def send_fig(path):
 def send_asset(path):
     return send_from_directory(os.path.join(scriptdir, 'assets'), path)
 
-@app.route("/eq/<number>/")
-def show_eq(number):
-    if allthebook is None:
-        abort(404)
+@app.route("/eq/<eq_id>/")
+def show_eq(eq_id):
+    if app.config.get('MATHJAX_WHOLEBOOK'):
+        # look by number in mathjax'ed wholebook
+        
+        if wholebook is None:
+            abort(404)
+    
+        soup = BeautifulSoup(wholebook, 'html.parser')
+        anchor = soup.find(id="mjx-eqn-" + str(eq_id))
+        if not anchor:
+            print("[mjx-eqn-" + str(eq_id) + " not found]")
+            return "[mjx-eqn-" + str(eq_id) + " not found]"
+        tag = anchor.find_parent(class_='mjx-chtml')
+        return str(tag)
+    else:
+        # look by label
+        tree, formatter = prepare_book()
+        tag = formatter.label_to_tag.get(eq_id)
 
-    soup = BeautifulSoup(allthebook, 'html.parser')
-    anchor = soup.find(id="mjx-eqn-" + str(number))
-    if not anchor:
-        print("[mjx-eqn-" + str(number) + "not found]")
-        return "[mjx-eqn-" + str(number) + "not found]"
-    tag = anchor.find_parent(class_='mjx-chtml')
-    return str(tag)
+        if not tag:
+            abort(404)
 
-#@app.route("/allthebook/")
+        if tag.name == "item":
+            tag = tag.parent
+
+        return formatter.handle(tag)
+
+
+#@app.route("/wholebook/")
 def show_allthebook():
-    if allthebook is None:
+    if wholebook is None:
         abort(404)
 
-    return render_template("preview.html", html=allthebook)
+    return render_template("preview.html", html=wholebook)
 
 def prepare_book():
+    global wholebook
+    if app.config.get('freeze'):
+        global tree
+        global formatter
+        if wholebook is not None:
+            return tree, formatter
+
     path = os.path.join(curdir, app.config['FILE'])
     if not os.path.isfile(path):
         abort(404)
     with open(path) as f:
         lines = f.readlines()
     parser = QqParser()
-    formatter = QqFlaskHTMLFormatter()
+    formatter = QqFlaskHTMLFormatter(
+        eq_preview_by_labels=not app.config.get("MATHJAX_WHOLEBOOK"))
 
     parser.allowed_tags.update(formatter.uses_tags())
     parser.allowed_tags.add('idx') # for indexes
@@ -123,15 +150,14 @@ def prepare_book():
 
     formatter.mode = 'bychapters'
     formatter.make_numbers(tree)
-    formatter.mk_chapters()
+    formatter.make_chapters()
 
     # dirty hack to get equation snippet work
-    global allthebook
-    if allthebook is None:
-        if app.config.get("MATHJAX_ALLTHEBOOK"):
-            style, allthebook = mathjax(app.config.get('preamble', '') + formatter.format(tree))
+    if wholebook is None:
+        if app.config.get("MATHJAX_WHOLEBOOK"):
+            style, wholebook = mathjax(app.config.get('preamble', '') + formatter.format(tree))
         else:
-            allthebook = formatter.format(tree)
+            wholebook = formatter.format(tree)
             style = ""
         app.config['css_correction'] = style + app.config.get('css_correction')
 
@@ -265,21 +291,36 @@ def register_command(f):
     return f
 
 @register_command
-def preview():
+def preview(**args):
     app.run(host='0.0.0.0')
 
 @register_command
-def build():
-    app.config['mathjax_node'] = True
-
+def build(**args):
     freezer = Freezer(app)
-    app.config['FREEZER_BASE_URL'] = 'http://math-info.hse.ru/odebook/'
-    app.config['MATHJAX_ALLTHEBOOK'] = True
+    if args.get('base_url'):
+        app.config['FREEZER_BASE_URL'] = args.get('base_url')
+    app.config['mathjax_node'] = args.get('node_mathjax', False)
+    app.config['MATHJAX_WHOLEBOOK'] = args.get('node_mathjax', False)
     app.config['FREEZER_DESTINATION'] = os.path.join(curdir, "build")
+    app.config['freeze'] = True
     freezer.freeze()
 
+    if args.get('copy_mathjax'):
+
+        mathjax_postfix = os.path.join('assets', "js", "mathjax")
+        mathjax_from = os.path.join(scriptdir, mathjax_postfix)
+        mathjax_to = os.path.join(curdir, "build", mathjax_postfix)
+
+        try:
+            shutil.rmtree(mathjax_to)
+        except FileNotFoundError:
+            pass
+
+        shutil.copytree(mathjax_from, mathjax_to)
+
+
 @register_command
-def convert():
+def convert(**args):
     path = os.path.join(curdir, app.config['FILE'])
     with open(path) as f:
         lines = f.readlines()
@@ -287,7 +328,6 @@ def convert():
     formatter = QqHTMLFormatter()
     parser = QqParser(allowed_tags=formatter.uses_tags())
 
-    tree = None
     try:
         tree = parser.parse(lines)
     except Exception as e:
@@ -310,12 +350,23 @@ def main():
                            help="File to proceed",
                            default="index.qq",
                            nargs='?')
+    argparser.add_argument("--node-mathjax",
+                           help="Use server-side mathjax",
+                           action='store_true')
+    argparser.add_argument('--base-url',
+                           help="Base URL")
+    argparser.add_argument('--copy-mathjax',
+                           help='Copy mathjax files to build/assets',
+                           action="store_true")
+
     args = argparser.parse_args()
+
     app.config['FILE'] = args.file
+
     if args.command in commands:
-        commands[args.command]()
+        commands[args.command](**vars(args))
     else:
-        print("Unkown command " + args.command)
+        print("Unknown command " + args.command)
 
 if __name__ == "__main__":
-    preview()
+    main()

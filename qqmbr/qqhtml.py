@@ -89,7 +89,7 @@ class Counter(object):
 
     def __init__(self, showparents=True):
         self.value = 0
-        self.children: List[Counter] = []
+        self.children: List['Counter'] = []
         self.parent: Counter = None
         self.showparents = showparents
 
@@ -201,13 +201,15 @@ def spawn_or_create_counter(parent: Optional[Counter]):
 
 class QqHTMLFormatter(object):
     def __init__(self, root: QqTag=QqTag("_root"),
-                 with_chapters=True) -> None:
+                 with_chapters=True,
+                 eq_preview_by_labels=False) -> None:
 
         self.templates_dir = os.path.join(
             os.path.dirname(os.path.realpath(__file__)),
             "templates")
 
         self.with_chapters = with_chapters
+        self.eq_preview_by_labels = eq_preview_by_labels
 
         self.label_to_number: Dict[str, str] = {}
         self.label_to_title: Dict[str, str] = {}
@@ -608,7 +610,8 @@ ${formatter.format(item, blanks_to_pars=False)}
             prefix, label = tag.children_values(not_simple='keep')
 
         number = self.label_to_number.get(label, "???")
-        target = self.label_to_tag[label]
+        target = self.label_to_tag.get(label)
+
         href = ""
         if self.mode == 'bychapters':
             if 'snippet' not in [t.name for t in tag.ancestor_path()]:
@@ -616,12 +619,14 @@ ${formatter.format(item, blanks_to_pars=False)}
                 fromindex = self.tag2chapter(tag)
             else:
                 fromindex = None
-            href = self.url_for_chapter(self.tag2chapter(target),
+            href = (self.url_for_chapter(self.tag2chapter(target),
                                         fromindex=fromindex)
+                    if target else "")
 
-        eqref = (target.name in self.formulaenvs or
-                 target.name == 'item' and
-                 target.parent.name in self.formulaenvs)
+        eqref = (target and
+                 (target.name in self.formulaenvs or
+                  target.name == 'item' and
+                  target.parent.name in self.formulaenvs))
 
         if eqref:
             href += "#mjx-eqn-" + str(number)
@@ -634,9 +639,10 @@ ${formatter.format(item, blanks_to_pars=False)}
                 if prefix:
                     doc.asis(self.format(prefix, blanks_to_pars=False))
                 if eqref:
+                    eq_id = label if self.eq_preview_by_labels else number
                     try:
                         doc.attr(
-                            ('data-url', self.url_for_eq_snippet(number)))
+                            ('data-url', self.url_for_eq_snippet(eq_id)))
                     except NotImplementedError:
                         pass
                 if (not isinstance(prefix, QqTag) or
@@ -1075,7 +1081,7 @@ ${formatter.format(item, blanks_to_pars=False)}
             s.lower(), self.flabel_to_tag.keys())[0]
         return self.flabel_to_tag.get(flabel)
 
-    def mk_chapters(self):
+    def make_chapters(self):
         for heading, *contents in split_by_predicate(
                 self.root,
                 predicate=lambda tag: (isinstance(tag, QqTag) and
