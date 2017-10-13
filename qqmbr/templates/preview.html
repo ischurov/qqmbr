@@ -403,12 +403,13 @@ div.quiz {
       </li>
 
 {% endif %}
+{% if meta %}
       {% for link in meta("link") %}
         <li>
         <a href="{{ link.get("url") }}">{{ link.text_content }}</a>
         </li>
       {% endfor %}
-
+{% endif %}
       </ul>
 
       <ul class="nav navbar-nav navbar-right">
