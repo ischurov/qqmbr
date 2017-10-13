@@ -336,33 +336,6 @@ div.quiz {
 
 <body data-spy="scroll" data-target="#sidebar-wrapper">
 
-
-<!--
-<a class="sr-only sr-only-focusable" href="#content">К началу</a>
-
-<!-- Docs master nav --
-<header class="navbar navbar-static-top bs-docs-nav" id="top" role="banner">
-<div class="container">
-  <div class="navbar-header">
-    <button class="navbar-toggle" type="button" data-toggle="collapse" data-target=".bs-navbar-collapse">
-      <span class="sr-only">Включить/выключить навигацию</span>
-      <span class="icon-bar"></span>
-      <span class="icon-bar"></span>
-      <span class="icon-bar"></span>
-    </button>
- <!--   <a href="thebook.html" class="navbar-brand">%(title)s</a> --
-  </div>
-  <nav class="collapse navbar-collapse bs-navbar-collapse" role="navigation">
-    <ul class="nav navbar-nav navbar-right">
-      <li><a href="http://math-info.hse.ru/">Страница курса</a></li>
-      <li><a href="https://github.com/ischurov/odebook">Исходные коды</a></li>
-    </ul>
-  </nav>
-</div>
-
-</header>
--->
-
 {% macro render_ftoc(ftoc, numbers=True) %}
       {% for item in ftoc.children recursive %}
       <li>
@@ -380,6 +353,7 @@ div.quiz {
       </li>
       {% endfor %}
 {% endmacro %}
+{% if meta %}
 <div class="jumbotron">
     <div class="container">
         <div class="page-header">
@@ -398,6 +372,7 @@ div.quiz {
         </div>
     </div>
 </div>
+{% endif %}
 <nav class="navbar navbar-default navbar-fixed-bottom">
   <div class="container-fluid">
     <!-- Brand and toggle get grouped for better mobile display -->
@@ -449,18 +424,6 @@ div.quiz {
     </div><!-- /.navbar-collapse -->
   </div><!-- /.container-fluid -->
 </nav>
-
-<!-- Docs page layout -->
-
-<!-- A purple header field with the title is optional, but it requires
-the docs.min.css style, which makes orange math...
-<div class="bs-docs-header" id="content">
- <div class="container">
-  <h1>%(title)s</h1>
-  <p>SHORT EXPLANATION</p>
- </div>
-</div>
--->
 
 <div class="container">
 
