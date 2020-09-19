@@ -32,6 +32,9 @@ app.config['preamble'] = r"""
 \newcommand{\mb}{\mathbf}
 \newcommand{\re}{\mathop{\mathrm{Re}}}
 \newcommand{\im}{\mathop{\mathrm{Im}}}
+\newcommand{\Ave}{\mathop{\mathrm{Ave}}}
+\newcommand{\EPE}{\mathop{\mathrm{EPE}}}
+\newcommand{\set}[1]{\{#1\}}
 \]
 </div>
 """
@@ -70,6 +73,9 @@ class QqFlaskHTMLFormatter(QqHTMLFormatter):
     def url_for_figure(self, s):
         return url_for('send_fig', path=s)
 
+    def url_for_img(self, s):
+        return url_for('send_img', path=s)
+
     def url_for_eq_snippet(self, eq_id):
         return url_for('show_eq', eq_id=eq_id)
 
@@ -81,6 +87,10 @@ def send_fig(path):
 @app.route('/assets/<path:path>')
 def send_asset(path):
     return send_from_directory(os.path.join(scriptdir, 'assets'), path)
+
+@app.route('/img/<path:path>')
+def send_img(path):
+    return send_from_directory(os.path.join(curdir, 'img'), path)
 
 @app.route("/eq/<eq_id>/")
 def show_eq(eq_id):
