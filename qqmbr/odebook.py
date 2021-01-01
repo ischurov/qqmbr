@@ -28,6 +28,8 @@ import matplotlib.pyplot as plt
 import matplotlib as mpl
 import scipy
 from scipy import integrate
+from matplotlib.patches import FancyArrowPatch
+from mpl_toolkits.mplot3d.proj3d import proj_transform
 
 
 def mquiver(xs, ys, v, **kw):
@@ -112,7 +114,8 @@ def normdirfield(xs,ys,f,**kw):
 #by Joe Kington
 #licensed under CC BY-SA
 
-def center_spines(ax=None, centerx=0, centery=0):
+def center_spines(ax=None, centerx=0, centery=0, grid=True,
+                  minor_ticks=True, axes=('x', 'y')):
     """Centers the axis spines at <centerx, centery> on the axis "ax", and
     places arrows at the end of the axis spines."""
     if ax is None:
@@ -126,16 +129,18 @@ def center_spines(ax=None, centerx=0, centery=0):
     ax.spines['top'].set_position(('data', centery))
 
     # Hide the line (but not ticks) for "extra" spines
-    for side in ['right', 'top']:
+    for side in ['left', 'bottom', 'right', 'top']:
         ax.spines[side].set_color('none')
 
     # On both the x and y axes...
     for axis, center in zip([ax.xaxis, ax.yaxis], [centerx, centery]):
         # Turn on minor and major gridlines and ticks
         axis.set_ticks_position('both')
-        axis.grid(True, 'major', ls='solid', lw=0.5, color='gray')
+        if grid:
+            axis.grid(True, 'major', ls='solid', lw=0.5, color='gray')
 #        axis.grid(True, 'minor', ls='solid', lw=0.1, color='gray')
-        axis.set_minor_locator(mpl.ticker.AutoMinorLocator())
+        if minor_ticks:
+            axis.set_minor_locator(mpl.ticker.AutoMinorLocator())
 
         # Hide the ticklabels at <centerx, centery>
         formatter = CenteredFormatter()
@@ -144,7 +149,7 @@ def center_spines(ax=None, centerx=0, centery=0):
 
     # Add offset ticklabels at <centerx, centery> using annotation
     # (Should probably make these update when the plot is redrawn...)
-    xlabel, ylabel = map(formatter.format_data, [centerx, centery])
+    xlabel, ylabel = map(str, [centerx, centery])
     if centerx != 0 or centery != 0:
         annotation = '(%s, %s)' % (xlabel, ylabel)
     else:
@@ -152,6 +157,17 @@ def center_spines(ax=None, centerx=0, centery=0):
     ax.annotate(annotation, (centerx, centery),
             xytext=(-4, -4), textcoords='offset points',
             ha='right', va='top')
+
+    # Add arrows
+    if 'x' in axes:
+        ax.annotate("", xytext=(0, 0), xy=(1, 0),
+                    xycoords=ax.get_yaxis_transform(),
+                    arrowprops=dict(arrowstyle='->'))
+    if 'y' in axes:
+        ax.annotate("", xytext=(0, 0), xy=(0, 1),
+                    xycoords=ax.get_xaxis_transform(),
+                    arrowprops=dict(arrowstyle='->'))
+
  
 class CenteredFormatter(mpl.ticker.ScalarFormatter):
     """Acts exactly like the default Scalar Formatter, but yields an empty
@@ -162,6 +178,39 @@ class CenteredFormatter(mpl.ticker.ScalarFormatter):
             return ''
         else:
             return mpl.ticker.ScalarFormatter.__call__(self, value, pos)
+
+def settle_axes(xmin, xmax, ymin, ymax,
+             xlabel="x",
+             ylabel="y",
+             ax=None,
+             axlabelshift=1, axlabelshift_h=None, axlabelshift_v=None):
+
+    if ax is None:
+        ax = plt.gca()
+    ax.set_ylim(ymin, ymax)
+    ax.set_xlim(xmin, xmax)
+
+    xwidth = xmax - xmin
+    ywidth = ymax - ymin
+
+    if xlabel:
+        ax.set_xlabel(f'${xlabel}$', x=1)
+
+    ticklab = next(iter(ax.xaxis.get_ticklabels()), None)
+    if ticklab:
+        trans = ticklab.get_transform()
+        ax.xaxis.set_label_coords(xmax, 0, transform=trans)
+    if ylabel:
+        ax.set_ylabel(f'${ylabel}$', y=1, rotation=0)
+
+    ticklab = next(iter(ax.yaxis.get_ticklabels()), None)
+    if ticklab:
+        trans = ticklab.get_transform()
+        axlabelshift_h = axlabelshift if axlabelshift_h is None else axlabelshift_h
+        axlabelshift_v = axlabelshift if axlabelshift_v is None else axlabelshift_v
+
+        ax.yaxis.set_label_coords(xwidth * 0.04 * axlabelshift_h,
+                                  ymax - ywidth * 0.05 * axlabelshift_v, transform=trans)
 
 
 def eulersplot(f, xa, xb, ya, n = 500, toolarge = 1E10, **kw):
@@ -448,3 +497,28 @@ def onedim_phasecurves(left, right, singpoints, directions,
     else:
         plt.quiver(ys, xs, vs, us, **quiver_params, **kwargs)
 
+### FROM: https://gist.github.com/WetHat/1d6cd0f7309535311a539b42cccca89c
+
+class Arrow3D(FancyArrowPatch):
+    def __init__(self, x, y, z, dx, dy, dz, *args, **kwargs):
+        super().__init__((0, 0), (0, 0), *args, **kwargs)
+        self._xyz = (x, y, z)
+        self._dxdydz = (dx, dy, dz)
+
+    def draw(self, renderer):
+        x1, y1, z1 = self._xyz
+        dx, dy, dz = self._dxdydz
+        x2, y2, z2 = (x1 + dx, y1 + dy, z1 + dz)
+
+        xs, ys, zs = proj_transform((x1, x2), (y1, y2), (z1, z2), renderer.M)
+        self.set_positions((xs[0], ys[0]), (xs[1], ys[1]))
+        super().draw(renderer)
+
+
+def arrow3D(ax, x, y, z, dx, dy, dz, *args, **kwargs):
+    """Add an 3d arrow to an `Axes3D` instance."""
+
+    arrow = Arrow3D(x, y, z, dx, dy, dz, *args, **kwargs)
+    ax.add_artist(arrow)
+
+### END FROM

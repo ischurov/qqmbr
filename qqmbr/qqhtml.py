@@ -21,7 +21,7 @@ from typing import (
     Iterator,
     Any,
 )
-from textwrap import indent
+from textwrap import indent, dedent
 import contextlib
 import sys
 from io import StringIO
@@ -31,6 +31,7 @@ import matplotlib
 matplotlib.use("Agg")
 
 import matplotlib.pyplot as plt
+from celluloid import Camera
 
 
 def mk_safe_css_ident(s):
@@ -293,7 +294,11 @@ class QqHTMLFormatter(object):
         )
         self.counters["equation"].showparents = True
 
-        self.counters["item"] = {"align": self.counters["equation"]}
+        self.counters["item"] = {
+            "align": self.counters["equation"],
+            "gather": self.counters["equation"],
+        }
+
         self.counters["figure"] = spawn_or_create_counter(chapters_counter)
 
         self.enumerateable_envs = {
@@ -322,6 +327,8 @@ class QqHTMLFormatter(object):
             "url",
             "lang",
             "role",
+            "codepreamble",
+            "preamble",
         }
 
         # You can make self.localnames = {} to use
@@ -348,7 +355,7 @@ class QqHTMLFormatter(object):
 
         self.localnames: Dict[str, str] = None
 
-        self.formulaenvs = {"eq", "equation", "align"}
+        self.formulaenvs = {"eq", "equation", "align", "gather"}
 
         for env in self.enumerateable_envs:
             self.counters[env] = spawn_or_create_counter(chapters_counter)
@@ -359,8 +366,9 @@ class QqHTMLFormatter(object):
         self.default_figname = "fig"
 
         plt.rcParams["figure.figsize"] = (6, 4)
+        plt.rcParams["animation.frame_format"] = "svg"
 
-        self.pythonfigure_globals = {"plt": plt}
+        self.pythonfigure_globals = {"plt": plt, "Camera": Camera}
         self.code_prefixes = dict(
             pythonfigure="import matplotlib.pyplot as plt\n",
             plotly=(
@@ -373,11 +381,14 @@ class QqHTMLFormatter(object):
                 "init_notebook_mode()\n\n"
             ),
             rawhtml="",
+            pythoncode="",
         )
 
         self.plotly_plotter = PlotlyPlotter()
 
         self.plotly_globals: Dict[str, Any] = {}
+
+        self.python_globals: Dict[str, Any] = {}
 
         self.css: Dict[str, str] = {}
         self.js_top: Dict[str, str] = {}
@@ -435,6 +446,7 @@ class QqHTMLFormatter(object):
         code: str,
         exts: Tuple[str, ...] = ("pdf", "svg"),
         tight_layout=True,
+        video=False,
     ) -> str:
         hashsum = hashlib.md5(code.encode("utf8")).hexdigest()
         prefix = hashsum[:2]
@@ -452,13 +464,33 @@ class QqHTMLFormatter(object):
             gl = self.pythonfigure_globals
             plt.close()
             exec(code, gl)
-            if tight_layout:
-                plt.tight_layout()
-            for ext in exts:
-                plt.savefig(
-                    os.path.join(path, self.default_figname + "." + ext)
-                )
+            if video:
+                animation = gl["animation"]
+                for ext in exts:
+                    animation.save(
+                        os.path.join(
+                            path, self.default_figname + "." + ext
+                        )
+                    )
+
+            else:
+                if tight_layout:
+                    plt.tight_layout()
+                for ext in exts:
+                    plt.savefig(
+                        os.path.join(
+                            path, self.default_figname + "." + ext
+                        )
+                    )
+
         return os.path.join(prefix, hashsum)
+
+    def make_python_jsanimate(self, code: str):
+        gl = self.pythonfigure_globals
+        plt.close()
+        exec(code, gl)
+        animation = gl["animation"]
+        return animation.to_jshtml(default_mode="once")
 
     def make_plotly_fig(self, code: str) -> str:
         global plotly
@@ -652,40 +684,73 @@ class QqHTMLFormatter(object):
             text("\\]\n")
         return doc.getvalue()
 
+    def multieq_template(self, name: str, tag: QqTag) -> str:
+        template = Template(
+            dedent(
+                r"""
+                \[
+                \begin{${name}}
+                <% items = tag("item") %>
+                % if items:
+                    % for i, item in enumerate(items):
+                        ${formatter.format(item, blanks_to_pars=False)}
+                        % if item.exists("number"):
+                            \tag{${item.number_.value}}
+                        % endif
+                        % if i != len(items):
+                            \\\
+                        
+                        % endif
+                        % endfor
+                % endif
+                \end{${name}}
+                \]
+                """
+            )
+        )
+        return template.render(formatter=self, tag=tag, name=name)
+
     def handle_align(self, tag: QqTag) -> str:
         """
         Uses tags: align, number, label, item
 
         Example:
-            \align
-                \item c^2 &= a^2 + b^2 \label eq:one
-                \item c &= \sqrt{a^2 + b^2} \label eq:two
+            \\align
+                \\item c^2 &= a^2 + b^2 \\label eq:one
+                \\item c &= \\sqrt{a^2 + b^2} \\label eq:two
 
         :param tag:
         :return:
         """
+        return self.multieq_template(name="align", tag=tag)
 
-        template = Template(
-            r"""\[
-\begin{align}
-<% items = tag("item") %>
-% if items:
-% for i, item in enumerate(items):
-${formatter.format(item, blanks_to_pars=False)}
-% if item.exists("number"):
-\tag{${item.number_.value}}
-% endif
-% if i != len(items):
-\\\
+    def handle_gather(self, tag: QqTag) -> str:
+        """
+        Uses tags: gather, number, label, item
 
-% endif
-% endfor
-% endif
-\end{align}
-\]
-"""
-        )
-        return template.render(formatter=self, tag=tag)
+        Example:
+            \\gather
+                \\item c^2 &= a^2 + b^2 \\label eq:one
+                \\item c &= \\sqrt{a^2 + b^2} \\label eq:two
+
+        :param tag:
+        :return:
+        """
+        return self.multieq_template(name="gather", tag=tag)
+
+    def handle_multline(self, tag: QqTag) -> str:
+        """
+        Uses tags: multline, number, label, item
+
+        Example:
+            \\multline
+                \\item c^2 &= a^2 + b^2 \\label eq:one
+                \\item c &= \\sqrt{a^2 + b^2} \\label eq:two
+
+        :param tag:
+        :return:
+        """
+        return self.multieq_template(name="multline", tag=tag)
 
     def handle_ref(self, tag: QqTag):
         """
@@ -732,7 +797,7 @@ ${formatter.format(item, blanks_to_pars=False)}
 
             prefix, label = tag.children_values(not_simple="keep")
 
-        number = self.label_to_number.get(label, "???")
+        number = self.label_to_number.get(label, "[" + label + "]")
         target = self.label_to_tag.get(label)
 
         href = ""
@@ -795,7 +860,7 @@ ${formatter.format(item, blanks_to_pars=False)}
 
         Example:
 
-            Consider \snref[Initial Value Problem|sn:IVP].
+            Consider \snref[Initial Value Problem][sn:IVP].
 
         Here sn:IVP -- label of snippet.
 
@@ -959,7 +1024,13 @@ ${formatter.format(item, blanks_to_pars=False)}
         doc, html, text = Doc().tagtext()
         with html("span", klass="paragraph"):
             doc.asis(self.format(tag, blanks_to_pars=False).strip() + ".")
-        return "<p>" + doc.getvalue() + " "
+        # TODO: make paragraphs clickable?
+        anchor = ""
+        if tag.exists("label"):
+            anchor = "<span id='{}'></span>".format(
+                self.label2id(tag.label_.value)
+            )
+        return anchor + "<p>" + doc.getvalue() + " "
 
     def handle_list(self, tag: QqTag, type_: str) -> str:
         doc, html, text = Doc().tagtext()
@@ -1000,16 +1071,24 @@ ${formatter.format(item, blanks_to_pars=False)}
                 Some figure
 
         Uses tags: figure, label, caption, number, showcode, collapsed, img
+        Uses tags: center, nocenter
 
         :param tag: QqTag
         :return: HTML of figure
         """
         doc, html, text = Doc().tagtext()
-        subtags = ["pythonfigure", "plotly", "rawhtml", "img"]
+        subtags = [
+            "pythonfigure",
+            "plotly",
+            "rawhtml",
+            "img",
+            "pythonvideo",
+        ]
         langs = {
             "pythonfigure": "python",
             "plotly": "python",
             "rawhtml": "html",
+            "pythonvideo": "python",
         }
         with html("div", klass="figure"):
             if tag.find("label"):
@@ -1029,7 +1108,19 @@ ${formatter.format(item, blanks_to_pars=False)}
                         )
                     doc.asis(self.handle(child))
                 elif child.name == "caption":
-                    with html("div", klass="figure_caption"):
+                    caption_content = self.format(
+                        child, blanks_to_pars=True
+                    )
+                    with html("div"):
+                        klass = "figure_caption"
+                        if child.exists("center"):
+                            klass += " figure_caption_center"
+                        elif (
+                            child.exists("nocenter")
+                            or len(child.text_content) > 90
+                        ):
+                            klass += " figure_caption_nocenter"
+                        doc.attr(klass=klass)
                         if label is not None:
                             with html(
                                 "a",
@@ -1051,31 +1142,94 @@ ${formatter.format(item, blanks_to_pars=False)}
                                 )
                                 + ": "
                             )
-                        doc.asis(self.format(child, blanks_to_pars=True))
+                        doc.asis(caption_content)
         return doc.getvalue()
 
-    def handle_pythonfigure(self, tag: QqTag) -> str:
+    def handle_pythonvideo(self, tag: QqTag) -> str:
         """
-        Uses tags: pythonfigure, style
+        Uses tags: pythonvideo, style, jsanimate
 
         :param tag:
         :return:
         """
 
-        path = self.make_python_fig(tag.text_content, exts=("svg",))
+        if tag.exists("jsanimate"):
+            return self.make_python_jsanimate(tag.text_content)
+
+        path = self.make_python_fig(
+            tag.text_content, exts=("mp4",), video=True
+        )
+        doc, html, text = Doc().tagtext()
+        with html(
+            "video",
+            klass="figure img-responsive",
+            controls="",
+        ):
+            if tag.exists("style"):
+                doc.attr(style=tag.style_.value)
+            doc.stag(
+                "source",
+                src=self.url_for_figure(
+                    path + "/" + self.default_figname + ".mp4"
+                ),
+                type="video/mp4",
+            )
+        return doc.getvalue()
+
+    def handle_pythonfigure(self, tag: QqTag) -> str:
+        """
+        Uses tags: pythonfigure, style, imgformat
+
+        :param tag:
+        :return:
+        """
+        format = tag.get("imgformat", "svg")
+        path = self.make_python_fig(tag.text_content, exts=(format,))
         doc, html, text = Doc().tagtext()
         with html(
             "img",
             klass="figure img-responsive",
             src=self.url_for_figure(
-                path + "/" + self.default_figname + ".svg"
+                path + "/" + self.default_figname + "." + format
             ),
         ):
             if tag.exists("style"):
                 doc.attr(style=tag.style_.value)
         return doc.getvalue()
 
+    def handle_pythoncode(self, tag: QqTag) -> str:
+        """
+        Uses tags: pythoncode, clearglobals, donotrun
 
+        :param tag:
+        :return:
+        """
+        doc, html, text = Doc().tagtext()
+
+        if tag.exists("showcode"):
+            doc.asis(
+                self.showcode(
+                    tag,
+                    collapsed=tag.exists("collapsed"),
+                    lang="python",
+                )
+            )
+
+        if tag.exists("clearglobals"):
+            self.python_globals.clear()
+
+        if not tag.exists("donotrun"):
+            with stdout_io() as s:
+                try:
+                    exec(tag.text_content, self.python_globals)
+                except Exception as e:
+                    print(
+                        "Exception: {}\n{}".format(e.__class__.__name__, e)
+                    )
+            with html("pre"):
+                with html("code", klass="lang-python"):
+                    doc.asis(s.getvalue())
+        return doc.getvalue()
 
     def handle_plotly(self, tag: QqTag) -> str:
         return "".join(self.make_plotly_fig(tag.text_content))
@@ -1102,14 +1256,14 @@ ${formatter.format(item, blanks_to_pars=False)}
         self, tag: QqTag, collapsed=False, lang: str = None
     ) -> str:
         """
-        <button class="source toggle btn btn-xs btn-primary">
-<span class="glyphicon glyphicon-chevron-up"></span>
-</button>
+                <button class="source toggle btn btn-xs btn-primary">
+        <span class="glyphicon glyphicon-chevron-up"></span>
+        </button>
 
-        :param tag:
-        :param collapsed: show code in collapsed mode by default
-        :param lang: language to use
-        :return:
+                :param tag:
+                :param collapsed: show code in collapsed mode by default
+                :param lang: language to use
+                :return:
         """
 
         self.css["highlightjs"] = (
@@ -1196,6 +1350,22 @@ ${formatter.format(item, blanks_to_pars=False)}
             return anchor
         return anchor + self.format(tag, blanks_to_pars=True)
 
+    def handle_alert(self, tag: QqTag) -> str:
+        """
+        Uses tags: alert, type
+
+        :param tag:
+        :return:
+        """
+
+        type = tag.get("type", "warning")
+
+        return dedent(
+            f"""<div class = 'alert alert-{type}'>
+                {self.format(tag)}
+            </div>"""
+        )
+
     def handle_hide(self, tag: QqTag) -> str:
         """
         :param tag:
@@ -1248,32 +1418,34 @@ ${formatter.format(item, blanks_to_pars=False)}
                 continue
             return None
 
-    def make_numbers(self, root: QqTag) -> None:
+    def make_numbers(self, tag: QqTag) -> None:
         """
         Uses tags: number, label, nonumber, flabel
 
         :return:
         """
-        for tag in root.children_tags():
-            name = tag.name
+        for child in tag.children_tags():
+            name = child.name
             if (
                 name in self.counters or name in self.enumerateable_envs
-            ) and not (tag.find("number") or tag.exists("nonumber")):
-                counter = self.get_counter_for_tag(tag)
+            ) and not (child.find("number") or child.exists("nonumber")):
+                counter = self.get_counter_for_tag(child)
                 if counter is not None:
                     counter.increase()
-                    tag.append_child(QqTag({"number": str(counter)}))
-                    if tag.find("label"):
-                        label = tag.label_.value
+                    child.append_child(QqTag({"number": str(counter)}))
+                    if child.find("label"):
+                        label = child.label_.value
                         self.label_to_number[label] = str(counter)
-                        # self.label_to_title[label] = tag.text_content
-            if tag.find("label") and tag.find("number"):
-                self.label_to_number[tag.label_.value] = tag.number_.value
-            if tag.find("label"):
-                self.label_to_tag[tag.label_.value] = tag
-            if tag.find("flabel"):
-                self.flabel_to_tag[tag.flabel_.value.lower()] = tag
-            self.make_numbers(tag)
+                        # self.label_to_title[label] = child.text_content
+            if child.find("label") and child.find("number"):
+                self.label_to_number[
+                    child.label_.value
+                ] = child.number_.value
+            if child.find("label"):
+                self.label_to_tag[child.label_.value] = child
+            if child.find("flabel"):
+                self.flabel_to_tag[child.flabel_.value.lower()] = child
+            self.make_numbers(child)
 
     def find_tag_by_flabel(self, s: str) -> QqTag:
         flabel = process.extractOne(s.lower(), self.flabel_to_tag.keys())[

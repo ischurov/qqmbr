@@ -245,5 +245,5 @@ See
         print(tree.as_list())
         html = formatter.do_format()
         soup = BeautifulSoup(html, "html.parser")
-        self.assertEqual(soup("a")[2].contents[0], "section ???")
-        self.assertEqual(soup("a")[3].contents[0], "zection ???")
+        self.assertEqual(soup("a")[2].contents[0], "section [sec:third]")
+        self.assertEqual(soup("a")[3].contents[0], "zection [sec:another]")

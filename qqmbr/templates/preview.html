@@ -9,7 +9,7 @@ Simula Resarch Laboratory.
 
 Available under BSD 3-Clause License, see https://github.com/hplgit/doconce/blob/master/LICENSE for details.
 -->
-<html lang="en">
+<html lang="{{ meta.get('lang', 'en') }}">
 <head>
     <meta charset="UTF-8">
     <title>{{ title }}</title>
@@ -17,17 +17,31 @@ Available under BSD 3-Clause License, see https://github.com/hplgit/doconce/blob
         span.env-title, span.paragraph {
             font-weight: bold;
         }
-        img.figure {
+        img.figure, video.figure {
             margin-left: auto;
             margin-right: auto;
             display: block;
         }
+
         div.figure {
             text-align: center;
             border-bottom: #cccccc 1px solid;
             border-top: #cccccc 1px solid;
             margin-bottom: 1em;
             margin-top: 1em;
+        }
+
+        div.figure_caption {
+            font-size: 90%;
+        }
+        div.figure_caption_nocenter {
+            margin-left: 5em;
+            margin-right: 5em;
+            text-align: left;
+        }
+
+        div.figure_caption_center {
+            text-align: center;
         }
         li.toc_item_level_1 {
             font-weight: bold;
@@ -331,10 +345,17 @@ div.quiz {
 
 </style>
 
-
 </head>
 
 <body data-spy="scroll" data-target="#sidebar-wrapper">
+
+{% if meta and meta.preamble_ %}
+<div style='visibility: hidden; display: none;'>
+\[
+{{ meta.get("preamble", "")}}
+\]
+</div>
+{% endif %}
 
 {% macro render_ftoc(ftoc, numbers=True) %}
       {% for item in ftoc.children recursive %}

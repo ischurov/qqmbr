@@ -1,0 +1,216 @@
+\tag meta
+    \tag author
+        \group formatted_text
+        \tag affiliation
+            \group formatted_text
+    \tag link
+        \tag url
+            \mandatory
+            \unique
+        \tag role
+            \unique
+        \group formatted_text
+    \tag license
+        \tag url
+    \tag title
+        \unique
+        \group formatted_text
+    \tag subtitle
+        \unique
+        \group formatted_text
+    \tag lang
+    \text
+        \notext
+    \unique
+\family enumeratables
+    \members
+        \tag remark
+        \tag theorem
+        \tag example
+        \tag exercise
+        \tag definition
+        \tag proposition
+        \tag lemma
+        \tag question
+        \tag corollary
+    \group numlab
+    \group formatted_text
+\family headings
+    \members
+        \tag chapter
+        \tag section
+        \tag subsection
+        \tag subsubsection
+    \group numlab
+    \group formatted_text
+\tag eq
+\tag equation
+    \group numlab
+\tag align
+    \tag item
+        \group numlab
+\family refs
+    \members
+        \tag ref
+        \tag eqref
+        \tag snref
+    \inline
+        \args
+            \arg
+        \args
+            \arg
+                \group formatted_text
+            \arg
+\tag href
+    \inline
+        \args
+            \arg
+                \group formatted_text
+            \arg
+\tag proof
+    \follow label
+    \tag outline
+        \flag
+    \tag of
+        \ref formatted_text
+    \ref formatted_text
+\tag paragraph
+    \ref formatted_text
+\family lists
+    \members
+        \tag enumerate
+        \tag itemize
+    \tag item
+        \ref formatted_text
+    \text
+        \notext
+\tag figure
+    \follow label
+    \ref number
+    \tag caption
+    \tag showcode
+        \flag
+    \tag collapsed
+        \empty
+        \unique
+    \tag caption
+        \ref formatted_text
+        \unqiue
+    \tag pythonfigure
+        \style
+            \unique
+    \tag plotly
+    \tag rawhtml
+\tag snippet
+    \tag hidden
+        \flag
+    \tag backref
+        \unique
+    \follow label
+    \group formatted_text
+\tag hide
+\family emphs
+    \members
+        \tag em
+        \tag emph
+    \group formatted_text
+\tag quiz
+    \md5id
+    \choice
+        \correct
+            \flag
+        \comment
+            \group formatted_text
+        \group formatted_text
+\tag raw_html
+\group formatted_text
+    \family enumerateables
+    \family headings
+    \family emphs
+    \tag eq
+    \tag equation
+    \tag align
+    \family refs
+    \tag href
+    \tag proof
+    \tag paragraph
+    \family lists
+    \tag figure
+    \tag snippet
+    \tag hide
+    \family emphs
+    \tag quiz
+    \tag raw_html
+    \group formatted_text
+\group numlab
+    \tag group
+    \tag label
+\tag label
+    \unique
+\tag number
+    \unique
+\tag _root
+    \follow meta    
+    \group formatted_text
+    
+---
+
+\tag a
+    \follow b
+\tag b
+    ...
+    
+->
+
+\tag a
+    \tag b
+        ...
+
+---
+
+\tag a
+    \inherit b
+\tag b
+    \unique
+    \tag c
+    
+->
+
+\tag a
+    \unique
+    \tag c
+    
+---
+
+\a
+    \group b
+\group b
+    \tag x
+    \tag y
+\tag x
+    ...
+\tag y
+    ...  
+->
+
+\a
+    \follow x
+    \follow y
+    
+---
+
+\a
+    \family b
+\family b
+    \members
+        \tag x
+        \tag y
+    \tag z
+    
+->
+
+\a
+    \tag x
+        \tag z
+    \tag y
+        \tag z
