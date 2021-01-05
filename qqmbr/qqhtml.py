@@ -238,6 +238,46 @@ def spawn_or_create_counter(parent: Optional[Counter]):
         return Counter()
 
 
+def process_only(tag: QqTag) -> Tuple[QqTag, QqTag]:
+    long_tag = QqTag(tag.name, adopt=True)
+    splitted_tag = QqTag(tag.name, adopt=True)
+    for child in tag:
+        if isinstance(child, str) or child.name not in [
+            "splonly",
+            "longonly",
+        ]:
+            long_tag.append_child(child)
+            splitted_tag.append_child(child)
+            continue
+        if child.name == "splonly":
+            for grandchild in child:
+                splitted_tag.append_child(grandchild)
+        if child.name == "longonly":
+            for grandchild in child:
+                long_tag.append_child(grandchild)
+
+    return long_tag, splitted_tag
+
+
+def extract_splitted_items(tag: QqTag) -> Tuple[QqTag, QqTag]:
+    curitem = None
+    long_tag = QqTag(tag.name, adopt=True)
+    splitted_tag = QqTag(tag.name, adopt=True)
+    for child in tag.children_tags():
+        long_child, splitted_child = process_only(child)
+        if child.name == "item":
+            long_tag.append_child(long_child)
+            splitted_tag.append_child(splitted_child)
+            curitem = long_tag[-1]
+        elif child.name == "splitem":
+            splitted_tag.append_child(
+                QqTag("item", splitted_child, adopt=True)
+            )
+            for grandchild in child:
+                curitem.append_child(grandchild)
+    return long_tag, splitted_tag
+
+
 class QqHTMLFormatter(object):
     def __init__(
         self,
@@ -297,6 +337,7 @@ class QqHTMLFormatter(object):
         self.counters["item"] = {
             "align": self.counters["equation"],
             "gather": self.counters["equation"],
+            "multline": self.counters["equation"],
         }
 
         self.counters["figure"] = spawn_or_create_counter(chapters_counter)
@@ -708,11 +749,26 @@ class QqHTMLFormatter(object):
                 """
             )
         )
+        if tag.exists("splitem"):
+            long_tag, splitted_tag = extract_splitted_items(tag)
+            print(long_tag, splitted_tag)
+            return dedent(
+                f"""
+                <div class='long-eq'>
+                { template.render(formatter=self, tag=long_tag, name=name) }
+                </div>
+                <div class='splitted-eq'>
+                { template.render(formatter=self, 
+                                   tag=splitted_tag, 
+                                   name=name) }
+                </div>
+                """
+            )
         return template.render(formatter=self, tag=tag, name=name)
 
     def handle_align(self, tag: QqTag) -> str:
         """
-        Uses tags: align, number, label, item
+        Uses tags: align, number, label, item, splitem, splonly, longonly
 
         Example:
             \\align
@@ -726,7 +782,7 @@ class QqHTMLFormatter(object):
 
     def handle_gather(self, tag: QqTag) -> str:
         """
-        Uses tags: gather, number, label, item
+        Uses tags: gather, number, label, item, splitem, splonly, longonly
 
         Example:
             \\gather
@@ -740,7 +796,7 @@ class QqHTMLFormatter(object):
 
     def handle_multline(self, tag: QqTag) -> str:
         """
-        Uses tags: multline, number, label, item
+        Uses tags: multline, number, label, item, splitem, splonly, longonly
 
         Example:
             \\multline

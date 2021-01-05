@@ -9,9 +9,10 @@ Simula Resarch Laboratory.
 
 Available under BSD 3-Clause License, see https://github.com/hplgit/doconce/blob/master/LICENSE for details.
 -->
-<html lang="{{ meta.get('lang', 'en') }}">
+<html lang="{{ meta.get('lang', 'en') if meta else 'en'}}">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width">
     <title>{{ title }}</title>
     <style type="text/css">
         span.env-title, span.paragraph {
@@ -130,9 +131,15 @@ a.snippet-ref {
 
 div.quiz {
     padding-top: 0.4em;
-
 }
 
+a.quiz-choice {
+    color: #31708f;
+}
+
+a.quiz-choice:hover {
+    text-decoration: none;
+}
     div.env__question {
   padding: 15px;
   margin-bottom: 20px;
@@ -343,6 +350,24 @@ div.quiz {
         min-width: 600px;
     }
 
+    @media screen and (min-width: 768px) {
+        .splitted-eq {
+            display: none;
+        }
+    }
+
+    @media print {
+        .splitted-eq {
+            display: none;
+        }
+    }
+
+    @media screen and (max-width: 768px) {
+        .long-eq {
+            display: none;
+        }
+    }
+
 </style>
 
 </head>
@@ -455,6 +480,17 @@ div.quiz {
   <div class="col-md-9" role="main">
       {{ preamble | safe }}
       {{ html | safe }}
+      <hr/>
+      {% if prev is not none or next is not none %}
+        <div class="text-center" style="padding-bottom: 1.5em;">
+         {% if prev is not none %}
+                      <a href="{{ prev | safe }}" class="btn btn-link">← Предыдущая глава</a>
+         {% endif %}
+         {% if next is not none %}
+                      <a href="{{ next | safe }}" class="btn btn-link">Следующая глава →</a>
+         {% endif %}
+        </div>
+      {% endif %}
 
 
   </div>
@@ -488,7 +524,7 @@ div.quiz {
 </div>
 <!-- <script src='https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML'></script> -->
 
-<script src="{{ rootdir | default("") }}/assets/js/mathjax/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+<script src="{{ url_for('send_asset', path='js/mathjax/MathJax.js') }}?config=TeX-AMS-MML_HTMLorMML"></script>
     <script type="text/x-mathjax-config">
   MathJax.Hub.Config({
     extensions: ["tex2jax.js"],
