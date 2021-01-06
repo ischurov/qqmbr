@@ -22,9 +22,12 @@ ENV PATH /opt/conda/bin:$PATH
 RUN pip install --upgrade pip
 #RUN echo 'debconf debconf/frontend select Noninteractive' | debconf-set-selections
 RUN pip install beautifulsoup4 lxml
-RUN conda install numpy scipy matplotlib
+RUN conda install numpy scipy
+
 RUN pip install indentml yattag mako fuzzywuzzy flask beautifulsoup4 \
-    frozen-flask python-Levenshtein plotly celluloid
+    frozen-flask python-Levenshtein plotly
+RUN pip install git+https://github.com/matplotlib/matplotlib.git
+RUN pip install celluloid
 RUN useradd -m user
 USER user
 WORKDIR /home/user
