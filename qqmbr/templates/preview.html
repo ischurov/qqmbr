@@ -56,7 +56,7 @@ Available under BSD 3-Clause License, see https://github.com/hplgit/doconce/blob
 
         body {
             position: relative;
-            padding-bottom: 50px;
+
         }
 
 
@@ -78,7 +78,12 @@ Available under BSD 3-Clause License, see https://github.com/hplgit/doconce/blob
   position: absolute;
 }
 
-
+footer {
+    padding: 15px 0;
+    background-color: #eee;
+    color: #aaa;
+    font-size: 90%;
+}
 
 .scrollable-menu {
     height: auto;
@@ -368,6 +373,20 @@ a.quiz-choice:hover {
         }
     }
 
+.smart-scroll{
+  position: fixed;
+  top: 0;
+  right: 0;
+  left: 0;
+  z-index: 1030;
+}
+.scrolled-down{
+   transform:translateY(-100%); transition: all 0.3s ease-in-out;
+}
+.scrolled-up{
+   transform:translateY(0); transition: all 0.3s ease-in-out;
+}
+
 </style>
 
 </head>
@@ -377,7 +396,7 @@ a.quiz-choice:hover {
 {% if meta and meta.preamble_ %}
 <div style='visibility: hidden; display: none;'>
 \[
-{{ meta.get("preamble", "")}}
+{{ meta.get("preamble", "") | safe }}
 \]
 </div>
 {% endif %}
@@ -399,27 +418,7 @@ a.quiz-choice:hover {
       </li>
       {% endfor %}
 {% endmacro %}
-{% if meta %}
-<div class="jumbotron">
-    <div class="container">
-        <div class="page-header">
-          <h1>{{ meta.get("title") }}
-              {% if meta.subtitle_ %}
-                <small>{{ meta.get("subtitle") }}</small>
-              {% endif %}
-          </h1>
-          {% if meta.author_ %}
-            <p>{{ meta.author_.text_content }}
-            {% if meta.author_.affiliation_ %}
-                ({{ meta.author_.affiliation_.text_content }})
-            {% endif %}
-            </p>
-            {% endif %}
-        </div>
-    </div>
-</div>
-{% endif %}
-<nav class="navbar navbar-default navbar-fixed-bottom">
+<nav class="navbar navbar-default navbar-fixed-top smart-scroll scrolled-up">
   <div class="container-fluid">
     <!-- Brand and toggle get grouped for better mobile display -->
     <div class="navbar-header">
@@ -465,15 +464,36 @@ a.quiz-choice:hover {
           <li class="next">
               <a href="{{ next | safe }}">Следующая глава →</a>
           </li>
-          {% endif %}
+{% endif %}
 
       </ul>
     </div><!-- /.navbar-collapse -->
   </div><!-- /.container-fluid -->
 </nav>
 
-<div class="container">
+{% if meta %}
+<div class="jumbotron">
+    <div class="container">
+        <div class="page-header">
+          <h1>{{ meta.get("title") }}
+              {% if meta.subtitle_ %}
+                <small>{{ meta.get("subtitle") }}</small>
+              {% endif %}
+          </h1>
+          {% if meta.author_ %}
+            <p>{{ meta.author_.text_content }}
+            {% if meta.author_.affiliation_ %}
+                ({{ meta.author_.affiliation_.text_content }})
+            {% endif %}
+            </p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endif %}
 
+
+<div class="container">
  <div class="row">
 
   <!-- main content -->
@@ -509,20 +529,19 @@ a.quiz-choice:hover {
          </nav>
      </div>
  </div>
-  <!-- sidebar with navigation -->
-     <!--
-  <div class="col-md-3">
-   <div class="bs-docs-sidebar hidden-print hidden-xs hidden-sm" role="complementary">
-    <ul class="nav bs-docs-sidenav">
-{{ toc | safe }}
-    </ul>
-    <a class="back-to-top" href="#top">К началу главы</a>
-   </div>
-  </div>
- </div>
- -->
 </div>
-<!-- <script src='https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML'></script> -->
+{% if template_options.get("footer") %}
+ <footer>
+<div class="container">
+    <div class="row">
+        <div class="col-md-9">
+            {{ template_options['footer'] | safe }}
+        </div>
+    </div>
+</div>
+</footer>
+{% endif %}
+     <!-- <script src='https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML'></script> -->
 
 <script src="{{ url_for('send_asset', path='js/mathjax/MathJax.js') }}?config=TeX-AMS-MML_HTMLorMML"></script>
     <script type="text/x-mathjax-config">
@@ -600,6 +619,21 @@ $('[data-url]').qtip({
         }
     }
 });
+
+// detect scroll top or down
+if ($('.smart-scroll').length > 0) { // check if element exists
+    var last_scroll_top = 0;
+    $(window).on('scroll', function() {
+        scroll_top = $(this).scrollTop();
+        if(scroll_top < last_scroll_top || scroll_top < $('.navbar').outerHeight()) {
+            $('.smart-scroll').removeClass('scrolled-down').addClass('scrolled-up');
+        }
+        else {
+            $('.smart-scroll').removeClass('scrolled-up').addClass('scrolled-down');
+        }
+        last_scroll_top = scroll_top;
+    });
+}
 </script>
 </body>
 </html>

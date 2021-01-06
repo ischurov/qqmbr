@@ -22,6 +22,7 @@ import argparse
 from flask_frozen import Freezer
 import re
 from textwrap import dedent
+import json
 
 scriptdir = os.path.dirname(os.path.realpath(__file__))
 curdir = os.getcwd()
@@ -129,7 +130,7 @@ def show_allthebook():
     if wholebook is None:
         abort(404)
 
-    return render_template("preview.html", html=wholebook)
+    return render_template("preview.html", html=wholebook, template_options=app.config.get("template_options"))
 
 def get_preamble(tree):
     if tree.meta_:
@@ -264,6 +265,7 @@ def show_chapter(index=None, label=None):
         prev=prev,
         js_bottom="\n".join(formatter.js_bottom.values()),
         js_onload="\n".join(formatter.js_onload.values()),
+        template_options=app.config.get('template_options'),
     )
 
 
@@ -398,6 +400,10 @@ def build(**args):
     app.config["MATHJAX_WHOLEBOOK"] = args.get("node_mathjax", False)
     app.config["FREEZER_DESTINATION"] = os.path.join(curdir, "build")
     app.config["freeze"] = True
+
+    if args.get("template_options"):
+        app.config['template_options'] = json.loads(args["template_options"])
+
     freezer.freeze()
 
     if args.get("copy_mathjax"):
@@ -457,6 +463,8 @@ def main():
         help="Copy mathjax files to build/assets",
         action="store_true",
     )
+
+    argparser.add_argument("--template_options", help="Additional options for template (JSON)")
 
     args = argparser.parse_args()
 
