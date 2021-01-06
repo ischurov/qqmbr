@@ -476,7 +476,7 @@ a.quiz-choice:hover {
     <div class="container">
         <div class="page-header">
           <h1>{{ meta.get("title") }}
-              {% if meta.subtitle_ %}
+              {% if meta.subtitle_ %}<br/>
                 <small>{{ meta.get("subtitle") }}</small>
               {% endif %}
           </h1>
@@ -530,7 +530,7 @@ a.quiz-choice:hover {
      </div>
  </div>
 </div>
-{% if template_options.get("footer") %}
+{% if template_options and template_options.get("footer") %}
  <footer>
 <div class="container">
     <div class="row">

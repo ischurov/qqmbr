@@ -1332,8 +1332,10 @@ class QqHTMLFormatter(object):
         )
         self.js_top["highlightjs"] = (
             '<script src="https://cdnjs.cloudflare.com/ajax/libs/'
-            'highlight.js/9.2.0/highlight.min.js"></script>\n'
-            "<script>hljs.initHighlightingOnLoad();</script>"
+            'highlight.js/10.5.0/highlight.min.js"></script>\n'
+            "<script>hljs.initHighlightingOnLoad();</script>\n"
+            '<script charset="UTF-8" src="https://cdnjs.cloudflare.com/'
+            'ajax/libs/highlight.js/10.5.0/languages/latex.min.js"></script>\n'
         )
         self.js_onload[
             "highlightjs"
@@ -1378,7 +1380,7 @@ class QqHTMLFormatter(object):
                 if lang:
                     doc.attr(klass="lang-" + lang)
 
-                doc.asis(self.code_prefixes.get(tag.name, "# " + tag.name))
+                doc.asis(self.code_prefixes.get(tag.name, ""))
                 # add a prefix if exists
 
                 text(tag.text_content)
@@ -1455,6 +1457,31 @@ class QqHTMLFormatter(object):
         :return:
         """
         return self.handle_em(tag)
+
+    def handle_strong(self, tag: QqTag) -> str:
+        """
+        Makes text strong (i.e. bold face)
+        :param tag:
+        :return:
+        """
+        return "<strong>" + self.format(tag) + "</strong>"
+
+    def handle_preformatted(self, tag: QqTag) -> str:
+        r"""
+        preformatted tag, like <pre> in HTML or \verbatim in LaTeX
+        Uses tags: collapsed, lang
+
+        :param tag:
+        :return:
+        """
+        if not tag.exists("lang"):
+            return "<pre>" + tag.text_content + "</pre>"
+        else:
+            return self.showcode(
+                tag,
+                collapsed=tag.exists("collapsed"),
+                lang=tag.get("lang"),
+            )
 
     def get_counter_for_tag(self, tag: QqTag) -> Optional[Counter]:
         name = tag.name
