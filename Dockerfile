@@ -2,10 +2,14 @@ FROM ubuntu:latest
 MAINTAINER Ilya Schurov <ilya@schurov.com>
 
 RUN apt-get -qq update 
+RUN ln -fs /usr/share/zoneinfo/Europe/Moscow /etc/localtime
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt-get -y install tzdata
 RUN apt-get install -qq nodejs npm
 RUN apt-get install -qq git vim
 RUN apt-get install -qq gcc
 RUN apt-get -qq -y install curl bzip2
+
 RUN curl -sSL https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -o /tmp/miniconda.sh 
 RUN bash /tmp/miniconda.sh -bfp /usr/local
 RUN rm -rf /tmp/miniconda.sh 
