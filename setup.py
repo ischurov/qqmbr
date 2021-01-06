@@ -85,7 +85,7 @@ setup(
     install_requires=['indentml', 'yattag', 'mako',
             'fuzzywuzzy', 'matplotlib', 'flask', 'beautifulsoup4',
                       'frozen-flask', 'python-Levenshtein', 'scipy',
-                      'plotly'],
+                      'plotly', 'celluloid'],
 
     # List additional groups of dependencies here (e.g. development
     # dependencies). You can install these using the following syntax,
