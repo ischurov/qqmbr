@@ -24,7 +24,7 @@ RUN pip install --upgrade pip
 RUN pip install beautifulsoup4 lxml
 RUN conda install numpy scipy matplotlib
 RUN pip install indentml yattag mako fuzzywuzzy flask beautifulsoup4 \
-    frozen-flask python-Levenshtein plotly
+    frozen-flask python-Levenshtein plotly celluloid
 RUN useradd -m user
 USER user
 WORKDIR /home/user
@@ -33,7 +33,7 @@ WORKDIR qqmbr/third-party
 RUN npm install mathjax-node-page@1.4.0
 
 WORKDIR /home/user/qqmbr
-COPY ./qqmbr ./
+COPY ./ ./
 RUN python setup.py develop --user
 ENV PATH ~/.local/bin:$PATH
 
