@@ -34,8 +34,10 @@ WORKDIR /home/user
 RUN mkdir -p qqmbr/third-party
 WORKDIR qqmbr/third-party
 RUN npm install mathjax-node-page@1.4.0
-
 WORKDIR /home/user/qqmbr
+RUN mkdir -p qqmbr/assets/js
+RUN cp -r third-party/node_modules/mathjax qqmbr/assets/js
+
 COPY ./ ./
 RUN python setup.py develop --user
 ENV PATH ~/.local/bin:$PATH
