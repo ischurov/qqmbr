@@ -751,7 +751,6 @@ class QqHTMLFormatter(object):
         )
         if tag.exists("splitem"):
             long_tag, splitted_tag = extract_splitted_items(tag)
-            print(long_tag, splitted_tag)
             return dedent(
                 f"""
                 <div class='long-eq'>
