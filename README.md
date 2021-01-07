@@ -9,8 +9,8 @@
 - Excellent equation support on web and mobile, thanks to MathJax.
 - All what you need to structure your text: different levels of headers, environments (*theorem*, *lemma* and so on).
 - References by labels.
-- Preview of equations and definitions on hover (a.k.a. *snippets*, see example [here](http://math-info.hse.ru/odebook/chapter/label/chap:2:auto/#label_sec_2_euler), look for «Контрольный вопрос»)).
-- Interactive quizes, (see example [here](http://math-info.hse.ru/odebook/chapter/label/chap:notion_of_ODE/#label_par_1_Cauchy_problem)).
+- Preview of equations and definitions on hover (a.k.a. *snippets*, see example [here](http://ode.mathbook.info/chapter/label/chap:2:auto/#label_sec_2_euler), look for «Контрольный вопрос»)).
+- Interactive quizes, (see example [here](http://ode.mathbook.info/chapter/label/chap:notion_of_ODE/#label_par_1_Cauchy_problem)).
 - Programmatically generated images embedding (matplotlib and plotly).
 
 ### View in action
@@ -40,7 +40,7 @@ You are welcome to participate with pull requests and issue-reporting.
 
 ### Code sample
 
-This is an example of **qqmbr** markup. See [live demo](http://math-info.hse.ru/qqmathpreview).
+This is an example of **qqmbr** markup. See [live demo](http://mathbook.info/qqmathpreview).
 
     \chapter Euler's formula
     \section Complex numbers \label sec:comlex
