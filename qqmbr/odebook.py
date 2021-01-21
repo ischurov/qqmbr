@@ -43,6 +43,7 @@ def mquiver(xs, ys, v, **kw):
     VY = [[w[1] for w in q] for q in V]
     plt.quiver(X, Y, VX, VY, **kw)
 
+
 def dirfield(xs, ys, f, **kw):
     """
     wrapper function of mquiver that plots the direction field
@@ -55,12 +56,14 @@ def dirfield(xs, ys, f, **kw):
                     headlength=0.0,
                     headaxislength=0.0,pivot='middle',angles='xy',**kw)
 
+
 def mplot(xs, f, **kw):
     """wrapper function for plot,
     xs is an array of x's
     f is a function R^1 -> R^1
     the rest of arguments are passed to plot"""
     plt.plot(xs, list(map(f,xs)), **kw)
+
 
 def axes4x4(labels=("t","x"),xmin=-4, xmax=4, ymin=-4, ymax=4, fontsize=20):
     """Set axes to [-4,4]×[-4,4] and label them
@@ -78,11 +81,14 @@ def axes4x4(labels=("t","x"),xmin=-4, xmax=4, ymin=-4, ymax=4, fontsize=20):
     plt.text(0.1 * xscale, ymax - 0.3 * yscale, "$%s$" % labels[1],
              fontsize=fontsize)
 
+
 def draw_axes(xmin, xmax, ymin, ymax, labels=("x", "y")):
     plt.axis([xmin, xmax, ymin, ymax])
     center_spines()
     plt.text(xmax, 0, "$%s$" % labels[0],fontsize=20, verticalalignment='bottom', horizontalalignment='right')
     plt.text(0, ymax, "$%s$" % labels[1],fontsize=20, verticalalignment='top', horizontalalignment='right')
+
+
 def normdirfield(xs,ys,f,**kw):
     """
     plot normalized direction field
@@ -113,6 +119,7 @@ def normdirfield(xs,ys,f,**kw):
 #http://stackoverflow.com/questions/4694478/center-origin-in-matplotlib/4718438#4718438
 #by Joe Kington
 #licensed under CC BY-SA
+
 
 def center_spines(ax=None, centerx=0, centery=0, grid=True,
                   minor_ticks=True, axes=('x', 'y')):
@@ -179,6 +186,7 @@ class CenteredFormatter(mpl.ticker.ScalarFormatter):
         else:
             return mpl.ticker.ScalarFormatter.__call__(self, value, pos)
 
+
 def settle_axes(xmin, xmax, ymin, ymax,
              xlabel="x",
              ylabel="y",
@@ -194,7 +202,7 @@ def settle_axes(xmin, xmax, ymin, ymax,
     ywidth = ymax - ymin
 
     if xlabel:
-        ax.set_xlabel(f'${xlabel}$', x=1)
+        ax.set_xlabel('${xlabel}$', x=1)
 
     ticklab = next(iter(ax.xaxis.get_ticklabels()), None)
     if ticklab:
@@ -251,7 +259,7 @@ def normvectorfield(xs,ys,fs,**kw):
     x, y = np.meshgrid(xs, ys)
     # calculate vector field
     vx,vy = fs(x,y)
-    # plot vecor field
+    # plot vector field
     norm = length /np.sqrt(vx**2+vy**2)
     plt.quiver(x, y, vx * norm, vy * norm, angles='xy',**kw)
 
@@ -270,8 +278,8 @@ def vectorfield(xs,ys,fs,**kw):
     - length is a desired length of the lines (default: 1)
     - the rest of kwards are passed to plot
     """
-    length= kw.pop('length') if 'length' in kw else 1
-    x, y=np.meshgrid(xs, ys)
+    length = kw.pop('length') if 'length' in kw else 1
+    x, y = np.meshgrid(xs, ys)
     # calculate vector field
     vx,vy=fs(x,y)
     # plot vecor field
@@ -406,8 +414,6 @@ def phaseportrait(fs, inits, t=(-5, 5), n=100, firstint=None, arrow=True,
                          markerfacecolor='white', markeredgecolor=singcolor)
 
 
-
-
 def mcontour(xs, ys, fs, levels=None, **kw):
     """
     wrapper function for contour
@@ -423,8 +429,10 @@ def mcontour(xs, ys, fs, levels=None, **kw):
     else:
         plt.contour(x,y,z,**kw)
 
+
 def get_default(from_, **kwargs):
     return {k:from_.get(k, v) for k, v in kwargs.items()}
+
 
 def onedim_phasecurves(left, right, singpoints, directions, 
                        orientation='vertical', shift=0, 
@@ -479,7 +487,6 @@ def onedim_phasecurves(left, right, singpoints, directions,
     us = np.zeros(n + 1)
     vs = []
 
-    
     endpoints = [left] + list(singpoints) + [right]
     for i, direction in enumerate(directions):
         if direction > 0:
@@ -497,8 +504,8 @@ def onedim_phasecurves(left, right, singpoints, directions,
     else:
         plt.quiver(ys, xs, vs, us, **quiver_params, **kwargs)
 
-### FROM: https://gist.github.com/WetHat/1d6cd0f7309535311a539b42cccca89c
 
+### FROM: https://gist.github.com/WetHat/1d6cd0f7309535311a539b42cccca89c
 class Arrow3D(FancyArrowPatch):
     def __init__(self, x, y, z, dx, dy, dz, *args, **kwargs):
         super().__init__((0, 0), (0, 0), *args, **kwargs)
