@@ -1,10 +1,10 @@
 # (c) Ilya V. Schurov, 2016
 # Available under MIT license (see LICENSE file in the root folder)
 
-from indentml.parser import QqParser, QqTag
+from indentml.parser import QqParser
 from qqmbr.qqhtml import QqHTMLFormatter
 from flask import (Flask, render_template, abort, send_from_directory,
-                   url_for, g, request, jsonify, redirect)
+                   url_for, request, redirect)
 import os
 import requests
 import re
@@ -31,6 +31,7 @@ def url_to_path(url):
             break
     return url
 
+
 def path_to_url(path):
     for url_prefix, path_prefix, _ in prefixes:
         if re.match(path_prefix, path):
@@ -48,9 +49,11 @@ def path_to_source_url(path):
             break
     return path
 
+
 @app.route('/assets/<path:path>')
 def send_asset(path):
     return send_from_directory(os.path.join(scriptdir, 'assets'), path)
+
 
 @app.route('/get/<path:path>')
 def render(path):
@@ -88,6 +91,7 @@ def render(path):
     return render_template("render_url.html", output=output,
                            source_url=path_to_url(path),
                            meta=meta)
+
 
 @app.route('/', methods=['GET', 'POST'])
 def showform():
