@@ -12,9 +12,8 @@ from flask import (
     abort,
     send_from_directory,
     url_for,
-    g,
 )
-from subprocess import Popen, PIPE, STDOUT
+from subprocess import Popen, PIPE
 from bs4 import BeautifulSoup
 import shutil
 import itertools
@@ -132,6 +131,7 @@ def show_allthebook():
 
     return render_template("preview.html", html=wholebook, template_options=app.config.get("template_options"))
 
+
 def get_preamble(tree):
     if tree.meta_:
         preamble = tree.meta_.get("preamble", "")
@@ -145,6 +145,7 @@ def get_preamble(tree):
                     \]
                     </div>
                     """)
+
 
 def prepare_book():
     global wholebook

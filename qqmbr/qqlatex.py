@@ -1,23 +1,22 @@
 import inspect
 from indentml.parser import QqTag
 
-class QqLaTeXFormatter(object):
 
+class QqLaTeXFormatter(object):
     def __init__(self, root: QqTag=None, allowed_tags=None):
         self.root = root
         self.allowed_tags = allowed_tags or set()
         self.enumerateable_envs = {name: name.capitalize() for name in ['remark', 'theorem', 'example', 'exercise',
                                                                     'definition', 'proposition', 'lemma',
                                                                         'question', 'corollary']}
-        self.tag_to_latex = {'h1':'section', 'h2':'subsection',
-                             'h3':'subsubsection', 'h4':'paragraph'}
+        self.tag_to_latex = {'h1': 'section', 'h2': 'subsection',
+                             'h3': 'subsubsection', 'h4': 'paragraph'}
 
         self.enumerateable_envs = {name: name.capitalize() for name
                                    in ['remark', 'theorem', 'example',
                                        'exercise', 'definition',
                                        'proposition', 'lemma', 'question',
                                        'corollary']}
-
 
     def uses_tags(self):
         members = inspect.getmembers(self, predicate=inspect.ismethod)

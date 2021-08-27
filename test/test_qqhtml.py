@@ -1,11 +1,7 @@
 # (c) Ilya V. Schurov, 2016
 # Available under MIT license (see LICENSE file in the root folder)
 
-import sys, os
-
-sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
-
-from indentml.parser import QqParser, QqTag
+from indentml.parser import QqParser
 from qqmbr.qqhtml import QqHTMLFormatter
 
 import unittest
@@ -96,7 +92,7 @@ See \ref{eq:x2y2}.
         html.counters['equation'].showparents = False
         s = html.do_format()
         soup = BeautifulSoup(s, 'html.parser')
-        self.assertEqual(soup.div.attrs, {'id':"label_eq_x2y2",'class':["latex_equation"]})
+        self.assertEqual(soup.div.attrs, {'id': "label_eq_x2y2", 'class': ["latex_equation"]})
         self.assertEqual(soup.span['class'], ['ref'])
         self.assertEqual(soup.a['class'], ['a-ref'])
         self.assertEqual(soup.a['href'], '#mjx-eqn-1')
