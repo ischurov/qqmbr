@@ -270,6 +270,7 @@ def extract_splitted_items(tag: QqTag) -> Tuple[QqTag, QqTag]:
             splitted_tag.append_child(splitted_child)
             curitem = long_tag[-1]
         elif child.name == "splitem":
+            # FIXME: longonly doesn't work inside splitem
             splitted_tag.append_child(
                 QqTag("item", splitted_child, adopt=True)
             )
@@ -531,7 +532,12 @@ class QqHTMLFormatter(object):
         plt.close()
         exec(code, gl)
         animation = gl["animation"]
-        return animation.to_jshtml(default_mode="once")
+        anim_html = (animation.to_jshtml(default_mode="once")
+                     .replace("<img id=",
+                              '<img class="figure img-responsive" id='))
+        # FIXME: find better way to fix classes here
+
+        return anim_html
 
     def make_plotly_fig(self, code: str) -> str:
         global plotly
@@ -1298,8 +1304,12 @@ class QqHTMLFormatter(object):
         """
         src = tag.src_.value
         doc, html, text = Doc().tagtext()
+        if src.startswith(("http://", "https://")):
+            url = src
+        else:
+            url = self.url_for_img(src)
         with html(
-            "img", klass="figure img-responsive", src=self.url_for_img(src)
+            "img", klass="figure img-responsive", src=url
         ):
             if tag.exists("style"):
                 doc.attr(style=tag.style_.value)
@@ -1393,7 +1403,7 @@ class QqHTMLFormatter(object):
 
     def handle_snippet(self, tag: QqTag) -> str:
         """
-        Uses tags: hidden, backref, label
+        Uses tags: hidden, backref, label, nobackref
 
         :param tag:
         :return:
@@ -1888,3 +1898,6 @@ class QqHTMLFormatter(object):
         with html("h2", klass="meta meta-subtitle"):
             doc.asis(self.format(tag, blanks_to_pars=False))
         return doc.getvalue()
+
+    def handle_blockquote(self, tag: QqTag) -> str:
+        return "<blockquote>" + self.format(tag, blanks_to_pars=True) + "</blockquote>"

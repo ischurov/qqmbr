@@ -283,20 +283,22 @@ def show_chapter_by_label(label):
 def show_snippet(label):
     tree, formatter = prepare_book()
     tag = formatter.label_to_tag.get(label)
-
     if tag is None or tag.name != "snippet":
         abort(404)
     if tag.exists("backref"):
         backref = tag.backref_.value
+    elif tag.exists("nobackref"):
+        backref = None
     else:
         backref = label
 
     parser = QqParser()
     parser.allowed_tags.update(formatter.uses_tags())
-    backref_tag = parser.parse(
-        r"\ref[Подробнее\nonumber][{}]".format(backref)
-    )
-    tag.append_child(backref_tag.ref_)
+    if backref:
+        backref_tag = parser.parse(
+            r"\ref[Подробнее\nonumber][{}]".format(backref)
+        )
+        tag.append_child(backref_tag.ref_)
 
     html = formatter.format(tag, blanks_to_pars=True)
 
