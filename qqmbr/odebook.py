@@ -202,7 +202,7 @@ def settle_axes(xmin, xmax, ymin, ymax,
     ywidth = ymax - ymin
 
     if xlabel:
-        ax.set_xlabel('${xlabel}$', x=1)
+        ax.set_xlabel(f'${xlabel}$', x=1)
 
     ticklab = next(iter(ax.xaxis.get_ticklabels()), None)
     if ticklab:
