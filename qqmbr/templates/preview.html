@@ -362,20 +362,14 @@ a.quiz-choice:hover {
         min-width: 600px;
     }
 
-    @media screen and (min-width: 768px) {
-        .splitted-eq {
-            display: none;
-        }
-    }
-
-    @media print {
-        .splitted-eq {
-            display: none;
-        }
-    }
-
     @media screen and (max-width: 768px) {
         .long-eq {
+            display: none;
+        }
+    }
+
+    @media not screen and (max-width: 768px) {
+        .splitted-eq {
             display: none;
         }
     }
