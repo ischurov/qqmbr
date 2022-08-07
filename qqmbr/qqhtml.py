@@ -362,6 +362,8 @@ class QqHTMLFormatter(object):
         self.metatags = {
             "meta",
             "author",
+            "translator",
+            "editor",
             "affiliation",
             "link",
             "license",
@@ -392,6 +394,22 @@ class QqHTMLFormatter(object):
                 "Question": "Вопрос",
                 "Corollary": "Следствие",
                 "Quasidefinition": "Как бы определение",
+            },
+            "uk": {
+                "Remark": "Зауваження",
+                "Theorem": "Теорема",
+                "Example": "Приклад",
+                "Exercise": "Вправа",
+                "Definition": "Визначення",
+                "Proposition": "Твердження",
+                "Lemma": "Лема",
+                "Proof": "Доказ",
+                "Proof outline": "Схема доведення",
+                "Figure": "Малюнок",
+                "Fig.": "Мал.",
+                "Question": "Питання",
+                "Corollary": "Наслідок",
+                "Quasidefinition": "Квазівизначення",
             }
         }
 
