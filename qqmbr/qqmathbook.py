@@ -23,6 +23,9 @@ import re
 from textwrap import dedent
 import json
 
+import sys
+print(sys.executable)
+
 scriptdir = os.path.dirname(os.path.realpath(__file__))
 curdir = os.getcwd()
 

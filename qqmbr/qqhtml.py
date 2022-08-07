@@ -270,11 +270,11 @@ def extract_splitted_items(tag: QqTag) -> Tuple[QqTag, QqTag]:
             splitted_tag.append_child(splitted_child)
             curitem = long_tag[-1]
         elif child.name == "splitem":
-            # FIXME: longonly doesn't work inside splitem
+
             splitted_tag.append_child(
                 QqTag("item", splitted_child, adopt=True)
             )
-            for grandchild in child:
+            for grandchild in long_child:
                 curitem.append_child(grandchild)
     return long_tag, splitted_tag
 
@@ -511,8 +511,8 @@ class QqHTMLFormatter(object):
                 for ext in exts:
                     animation.save(
                         os.path.join(
-                            path, self.default_figname + "." + ext
-                        )
+                            path, self.default_figname + "." + ext,
+                        ), bitrate=2000
                     )
 
             else:
@@ -744,7 +744,7 @@ class QqHTMLFormatter(object):
                         % if item.exists("number"):
                             \tag{${item.number_.value}}
                         % endif
-                        % if i != len(items):
+                        % if i != len(items) - 1:
                             \\\
                         
                         % endif
@@ -757,10 +757,11 @@ class QqHTMLFormatter(object):
         )
         if tag.exists("splitem"):
             long_tag, splitted_tag = extract_splitted_items(tag)
+            long_name = tag.get("longenv", name)
             return dedent(
                 f"""
                 <div class='long-eq'>
-                { template.render(formatter=self, tag=long_tag, name=name) }
+                { template.render(formatter=self, tag=long_tag, name=long_name) }
                 </div>
                 <div class='splitted-eq'>
                 { template.render(formatter=self, 
@@ -774,6 +775,7 @@ class QqHTMLFormatter(object):
     def handle_align(self, tag: QqTag) -> str:
         """
         Uses tags: align, number, label, item, splitem, splonly, longonly
+        Uses tags: longenv
 
         Example:
             \\align
@@ -788,6 +790,7 @@ class QqHTMLFormatter(object):
     def handle_gather(self, tag: QqTag) -> str:
         """
         Uses tags: gather, number, label, item, splitem, splonly, longonly
+        Uses tags: longenv
 
         Example:
             \\gather
@@ -801,7 +804,8 @@ class QqHTMLFormatter(object):
 
     def handle_multline(self, tag: QqTag) -> str:
         """
-        Uses tags: multline, number, label, item, splitem, splonly, longonly
+        Uses tags: multline, number, label, item, splitem, splonly, longonly, longenv
+        Uses tags: longenv
 
         Example:
             \\multline

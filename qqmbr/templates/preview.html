@@ -56,7 +56,7 @@ Available under BSD 3-Clause License, see https://github.com/hplgit/doconce/blob
 
         body {
             position: relative;
-
+padding-bottom: 13em;
         }
 
         .container {
@@ -97,6 +97,8 @@ footer {
     max-height: 80vh;
     overflow-x: hidden;
 }
+
+
     </style>
 <!-- Bootstrap style: http://getbootstrap.com/getting-started/
 
@@ -163,9 +165,11 @@ a.quiz-choice:hover {
   border-color: #bce8f1;
     }
 
-    img.figure {
-        max-width:600px;
-        width:100%;
+    @media screen {
+        img.figure {
+            max-width: 600px;
+            width: 100%;
+        }
     }
 
    .toggle{
@@ -388,6 +392,18 @@ a.quiz-choice:hover {
    transform:translateY(0); transition: all 0.3s ease-in-out;
 }
 
+
+.stopwar {
+  background-color: black;
+    color: white;
+    font-size: 200%;
+}
+    .stopwar > div > a {
+        color: lightgray;
+    }
+    .stopwar > div > a:hover {
+        color: lightblue;
+    }
 </style>
 
 </head>
@@ -540,6 +556,13 @@ a.quiz-choice:hover {
         </div>
     </div>
 </div>
+</footer>
+{% endif %}
+{% if template_options and template_options.get("stopwar_banner") %}
+<footer class="navbar navbar-default navbar-fixed-bottom stopwar">
+    <div class="container">
+    {{ template_options['stopwar_banner'] | safe }}
+    </div>
 </footer>
 {% endif %}
      <!-- <script src='https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML'></script> -->
