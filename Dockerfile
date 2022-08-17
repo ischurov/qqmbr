@@ -39,6 +39,10 @@ RUN mkdir -p qqmbr/assets/js
 RUN cp -r third-party/node_modules/mathjax qqmbr/assets/js
 
 COPY ./ ./
+USER root
+RUN chown -R user *
+USER user
+
 RUN python setup.py develop --user
 ENV PATH ~/.local/bin:$PATH
 
