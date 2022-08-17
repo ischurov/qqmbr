@@ -394,7 +394,7 @@ def register_command(f):
 
 @register_command
 def preview(**args):
-    app.run(host="0.0.0.0")
+    app.run(host="0.0.0.0", port=5001)
 
 
 @register_command
