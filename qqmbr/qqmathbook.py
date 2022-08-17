@@ -12,9 +12,8 @@ from flask import (
     abort,
     send_from_directory,
     url_for,
-    g,
 )
-from subprocess import Popen, PIPE, STDOUT
+from subprocess import Popen, PIPE
 from bs4 import BeautifulSoup
 import shutil
 import itertools
@@ -23,6 +22,9 @@ from flask_frozen import Freezer
 import re
 from textwrap import dedent
 import json
+
+import sys
+print(sys.executable)
 
 scriptdir = os.path.dirname(os.path.realpath(__file__))
 curdir = os.getcwd()
@@ -132,6 +134,7 @@ def show_allthebook():
 
     return render_template("preview.html", html=wholebook, template_options=app.config.get("template_options"))
 
+
 def get_preamble(tree):
     if tree.meta_:
         preamble = tree.meta_.get("preamble", "")
@@ -145,6 +148,7 @@ def get_preamble(tree):
                     \]
                     </div>
                     """)
+
 
 def prepare_book():
     global wholebook
@@ -283,20 +287,22 @@ def show_chapter_by_label(label):
 def show_snippet(label):
     tree, formatter = prepare_book()
     tag = formatter.label_to_tag.get(label)
-
     if tag is None or tag.name != "snippet":
         abort(404)
     if tag.exists("backref"):
         backref = tag.backref_.value
+    elif tag.exists("nobackref"):
+        backref = None
     else:
         backref = label
 
     parser = QqParser()
     parser.allowed_tags.update(formatter.uses_tags())
-    backref_tag = parser.parse(
-        r"\ref[Подробнее\nonumber][{}]".format(backref)
-    )
-    tag.append_child(backref_tag.ref_)
+    if backref:
+        backref_tag = parser.parse(
+            r"\ref[Подробнее\nonumber][{}]".format(backref)
+        )
+        tag.append_child(backref_tag.ref_)
 
     html = formatter.format(tag, blanks_to_pars=True)
 

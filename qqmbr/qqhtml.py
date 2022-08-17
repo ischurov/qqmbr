@@ -270,10 +270,11 @@ def extract_splitted_items(tag: QqTag) -> Tuple[QqTag, QqTag]:
             splitted_tag.append_child(splitted_child)
             curitem = long_tag[-1]
         elif child.name == "splitem":
+
             splitted_tag.append_child(
                 QqTag("item", splitted_child, adopt=True)
             )
-            for grandchild in child:
+            for grandchild in long_child:
                 curitem.append_child(grandchild)
     return long_tag, splitted_tag
 
@@ -361,6 +362,8 @@ class QqHTMLFormatter(object):
         self.metatags = {
             "meta",
             "author",
+            "translator",
+            "editor",
             "affiliation",
             "link",
             "license",
@@ -391,6 +394,22 @@ class QqHTMLFormatter(object):
                 "Question": "Вопрос",
                 "Corollary": "Следствие",
                 "Quasidefinition": "Как бы определение",
+            },
+            "uk": {
+                "Remark": "Зауваження",
+                "Theorem": "Теорема",
+                "Example": "Приклад",
+                "Exercise": "Вправа",
+                "Definition": "Визначення",
+                "Proposition": "Твердження",
+                "Lemma": "Лема",
+                "Proof": "Доказ",
+                "Proof outline": "Схема доведення",
+                "Figure": "Малюнок",
+                "Fig.": "Мал.",
+                "Question": "Питання",
+                "Corollary": "Наслідок",
+                "Quasidefinition": "Квазівизначення",
             }
         }
 
@@ -510,8 +529,8 @@ class QqHTMLFormatter(object):
                 for ext in exts:
                     animation.save(
                         os.path.join(
-                            path, self.default_figname + "." + ext
-                        )
+                            path, self.default_figname + "." + ext,
+                        ), bitrate=2000
                     )
 
             else:
@@ -531,7 +550,12 @@ class QqHTMLFormatter(object):
         plt.close()
         exec(code, gl)
         animation = gl["animation"]
-        return animation.to_jshtml(default_mode="once")
+        anim_html = (animation.to_jshtml(default_mode="once")
+                     .replace("<img id=",
+                              '<img class="figure img-responsive" id='))
+        # FIXME: find better way to fix classes here
+
+        return anim_html
 
     def make_plotly_fig(self, code: str) -> str:
         global plotly
@@ -738,7 +762,7 @@ class QqHTMLFormatter(object):
                         % if item.exists("number"):
                             \tag{${item.number_.value}}
                         % endif
-                        % if i != len(items):
+                        % if i != len(items) - 1:
                             \\\
                         
                         % endif
@@ -751,11 +775,11 @@ class QqHTMLFormatter(object):
         )
         if tag.exists("splitem"):
             long_tag, splitted_tag = extract_splitted_items(tag)
-            print(long_tag, splitted_tag)
+            long_name = tag.get("longenv", name)
             return dedent(
                 f"""
                 <div class='long-eq'>
-                { template.render(formatter=self, tag=long_tag, name=name) }
+                { template.render(formatter=self, tag=long_tag, name=long_name) }
                 </div>
                 <div class='splitted-eq'>
                 { template.render(formatter=self, 
@@ -769,6 +793,7 @@ class QqHTMLFormatter(object):
     def handle_align(self, tag: QqTag) -> str:
         """
         Uses tags: align, number, label, item, splitem, splonly, longonly
+        Uses tags: longenv
 
         Example:
             \\align
@@ -783,6 +808,7 @@ class QqHTMLFormatter(object):
     def handle_gather(self, tag: QqTag) -> str:
         """
         Uses tags: gather, number, label, item, splitem, splonly, longonly
+        Uses tags: longenv
 
         Example:
             \\gather
@@ -796,7 +822,8 @@ class QqHTMLFormatter(object):
 
     def handle_multline(self, tag: QqTag) -> str:
         """
-        Uses tags: multline, number, label, item, splitem, splonly, longonly
+        Uses tags: multline, number, label, item, splitem, splonly, longonly, longenv
+        Uses tags: longenv
 
         Example:
             \\multline
@@ -1299,8 +1326,12 @@ class QqHTMLFormatter(object):
         """
         src = tag.src_.value
         doc, html, text = Doc().tagtext()
+        if src.startswith(("http://", "https://")):
+            url = src
+        else:
+            url = self.url_for_img(src)
         with html(
-            "img", klass="figure img-responsive", src=self.url_for_img(src)
+            "img", klass="figure img-responsive", src=url
         ):
             if tag.exists("style"):
                 doc.attr(style=tag.style_.value)
@@ -1394,7 +1425,7 @@ class QqHTMLFormatter(object):
 
     def handle_snippet(self, tag: QqTag) -> str:
         """
-        Uses tags: hidden, backref, label
+        Uses tags: hidden, backref, label, nobackref
 
         :param tag:
         :return:
@@ -1889,3 +1920,6 @@ class QqHTMLFormatter(object):
         with html("h2", klass="meta meta-subtitle"):
             doc.asis(self.format(tag, blanks_to_pars=False))
         return doc.getvalue()
+
+    def handle_blockquote(self, tag: QqTag) -> str:
+        return "<blockquote>" + self.format(tag, blanks_to_pars=True) + "</blockquote>"

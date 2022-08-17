@@ -2,8 +2,8 @@
 
 from indentml.parser import QqTag
 
-class QqXMLFormatter(object):
 
+class QqXMLFormatter(object):
     def __init__(self, root: QqTag=None, allowed_tags=None):
         self.root = root
         self.allowed_tags = allowed_tags or set()
