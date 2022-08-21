@@ -394,6 +394,7 @@ class QqHTMLFormatter(object):
                 "Question": "Вопрос",
                 "Corollary": "Следствие",
                 "Quasidefinition": "Как бы определение",
+                "More details": "Подробнее",
             },
             "uk": {
                 "Remark": "Зауваження",
@@ -410,6 +411,7 @@ class QqHTMLFormatter(object):
                 "Question": "Питання",
                 "Corollary": "Наслідок",
                 "Quasidefinition": "Квазівизначення",
+                # "More details": "TODO"
             }
         }
 

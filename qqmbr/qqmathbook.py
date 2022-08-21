@@ -24,6 +24,7 @@ from textwrap import dedent
 import json
 
 import sys
+
 print(sys.executable)
 
 scriptdir = os.path.dirname(os.path.realpath(__file__))
@@ -132,7 +133,11 @@ def show_allthebook():
     if wholebook is None:
         abort(404)
 
-    return render_template("preview.html", html=wholebook, template_options=app.config.get("template_options"))
+    return render_template(
+        "preview.html",
+        html=wholebook,
+        template_options=app.config.get("template_options"),
+    )
 
 
 def get_preamble(tree):
@@ -141,13 +146,15 @@ def get_preamble(tree):
     else:
         preamble = ""
 
-    return dedent(f"""
+    return dedent(
+        f"""
                     <div style='visibility: hidden; display: none;'>
                     \[
                         {preamble}
                     \]
                     </div>
-                    """)
+                    """
+    )
 
 
 def prepare_book():
@@ -180,7 +187,9 @@ def prepare_book():
         "\n\n"
     )
 
-    formatter.code_prefixes["pythonvideo"] = formatter.code_prefixes["pythonfigure"]
+    formatter.code_prefixes["pythonvideo"] = formatter.code_prefixes[
+        "pythonfigure"
+    ]
 
     formatter.plotly_globals.update({"np": numpy})
     formatter.code_prefixes["plotly"] = (
@@ -196,7 +205,9 @@ def prepare_book():
 
     if wholebook is None:
         if app.config.get("MATHJAX_WHOLEBOOK"):
-            style, wholebook = mathjax(get_preamble(tree) + formatter.format(tree))
+            style, wholebook = mathjax(
+                get_preamble(tree) + formatter.format(tree)
+            )
         else:
             wholebook = formatter.format(tree)
             style = ""
@@ -269,7 +280,7 @@ def show_chapter(index=None, label=None):
         prev=prev,
         js_bottom="\n".join(formatter.js_bottom.values()),
         js_onload="\n".join(formatter.js_onload.values()),
-        template_options=app.config.get('template_options'),
+        template_options=app.config.get("template_options"),
     )
 
 
@@ -300,17 +311,18 @@ def show_snippet(label):
     parser.allowed_tags.update(formatter.uses_tags())
     if backref:
         backref_tag = parser.parse(
-            r"\ref[Подробнее\nonumber][{}]".format(backref)
+            r"\ref[{}\nonumber][{}]".format(
+                formatter.localize("More details"), backref
+            )
         )
+        tag.append_child(" ")
         tag.append_child(backref_tag.ref_)
 
     html = formatter.format(tag, blanks_to_pars=True)
 
     del tag[len(tag) - 1]
 
-    return mathjax_if_needed(
-        html, preamble=get_preamble(tree)
-    )[1]
+    return mathjax_if_needed(html, preamble=get_preamble(tree))[1]
 
 
 @app.route("/")
@@ -408,7 +420,9 @@ def build(**args):
     app.config["freeze"] = True
 
     if args.get("template_options"):
-        app.config['template_options'] = json.loads(args["template_options"])
+        app.config["template_options"] = json.loads(
+            args["template_options"]
+        )
 
     freezer.freeze()
 
@@ -470,7 +484,9 @@ def main():
         action="store_true",
     )
 
-    argparser.add_argument("--template_options", help="Additional options for template (JSON)")
+    argparser.add_argument(
+        "--template_options", help="Additional options for template (JSON)"
+    )
 
     args = argparser.parse_args()
 
