@@ -27,7 +27,7 @@ RUN conda install numpy scipy
 RUN pip install indentml yattag mako fuzzywuzzy flask beautifulsoup4 \
     frozen-flask python-Levenshtein plotly
 RUN pip install git+https://github.com/matplotlib/matplotlib.git
-RUN pip install celluloid
+RUN pip install celluloid sympy
 RUN useradd -m user
 USER user
 WORKDIR /home/user
@@ -39,6 +39,10 @@ RUN mkdir -p qqmbr/assets/js
 RUN cp -r third-party/node_modules/mathjax qqmbr/assets/js
 
 COPY ./ ./
+USER root
+RUN chown -R user *
+USER user
+
 RUN python setup.py develop --user
 ENV PATH ~/.local/bin:$PATH
 
