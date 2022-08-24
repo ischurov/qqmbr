@@ -22,7 +22,7 @@ ENV PATH /opt/conda/bin:$PATH
 RUN pip install --upgrade pip
 #RUN echo 'debconf debconf/frontend select Noninteractive' | debconf-set-selections
 RUN pip install beautifulsoup4 lxml
-RUN conda install numpy scipy
+# RUN conda install numpy scipy
 
 RUN pip install indentml yattag mako fuzzywuzzy flask beautifulsoup4 \
     frozen-flask python-Levenshtein plotly
