@@ -156,6 +156,22 @@ def get_preamble(tree):
                     """
     )
 
+def strip_tag_by_name(tree: QqTag, name: str) -> QqTag:
+    newtree = QqTag(tree.name)
+    for child in tree:
+        if isinstance(child, str):
+            if newtree and isinstance(newtree[-1], str):
+                newtext = newtree[-1] + "\n" + child
+                del newtree[len(newtree) - 1]
+                newtree.append_line(newtext)
+                # cannot simply
+                # newtree[-1] += child
+                # due to bug in indentml
+            else:
+                newtree.append_child(child)
+        elif child.name != name:
+            newtree.append_child(strip_tag_by_name(child, name))
+    return newtree
 
 def prepare_book():
     global wholebook
@@ -176,8 +192,13 @@ def prepare_book():
     )
 
     parser.allowed_tags.update(formatter.uses_tags())
-    parser.allowed_tags.add("idx")  # for indexes
+    parser.allowed_tags.update(["idx", "source"])  # idx for indexes
+
     tree = parser.parse(lines).process_include_tags(parser, curdir)
+    print(tree)
+    tree = strip_tag_by_name(tree, "source")
+
+
     formatter.root = tree
     formatter.pythonfigure_globals.update({"ob": odebook, "np": numpy})
     formatter.code_prefixes["pythonfigure"] += (

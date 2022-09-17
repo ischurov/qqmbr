@@ -1542,6 +1542,8 @@ class QqHTMLFormatter(object):
         """
         for child in tag.children_tags():
             name = child.name
+            if name == 'hide':
+                continue
             if (
                 name in self.counters or name in self.enumerateable_envs
             ) and not (child.find("number") or child.exists("nonumber")):
